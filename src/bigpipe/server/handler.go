@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"bigpipe"
 	"time"
+	"bigpipe/util"
 )
 
 type Handler struct {
@@ -42,17 +43,6 @@ func packResponse(w http.ResponseWriter, errno int, msg string, data interface{}
 	return true
 }
 
-func jsonGetString(dict *map[string]interface{}, key string) (string, bool){
-	if iVal, urlExsit := (*dict)[key]; urlExsit {
-		if val, isString := iVal.(string); isString {
-			return val, true
-		} else {
-			return "", false
-		}
-	}
-	return "", false
-}
-
 // 检查ACL权限
 func aclCheck(request *callRequest) bool {
 	conf := bigpipe.GetConfig()
@@ -71,7 +61,7 @@ func makeCallMessage(req *http.Request, call *callRequest) *kafka.CallMessage {
 		Url: call.url,
 		Data: call.data,
 		Topic: call.acl.Topic,
-		CreateTime: int64(now.UnixNano() / 1000000),
+		CreateTime: int(now.UnixNano() / 1000000),
 	}
 	return &msg
 }
@@ -97,21 +87,21 @@ func parseRequest(body []byte) (*callRequest, string) {
 	request := callRequest{}
 	getOk := false
 
-	if request.url, getOk = jsonGetString(&dict, "url"); !getOk {
+	if request.url, getOk = util.JsonGetString(&dict, "url"); !getOk {
 		return nil, "url无效"
 	}
-	if request.data, getOk = jsonGetString(&dict, "data"); !getOk {
+	if request.data, getOk = util.JsonGetString(&dict, "data"); !getOk {
 		return nil, "data无效"
 	}
-	if request.partitionKey, getOk = jsonGetString(&dict, "partition_key"); !getOk {
+	if request.partitionKey, getOk = util.JsonGetString(&dict, "partition_key"); !getOk {
 		return nil, "partition_key无效"
 	}
 	if acl, exsit := dict["acl"]; exsit {
 		if aclMap, exsit := acl.(map[string]interface{}); exsit {
-			if request.acl.Name, getOk = jsonGetString(&aclMap, "name"); !getOk {
+			if request.acl.Name, getOk = util.JsonGetString(&aclMap, "name"); !getOk {
 				return nil, "acl.name"
 			}
-			if request.acl.Secret, getOk = jsonGetString(&aclMap, "secret"); !getOk {
+			if request.acl.Secret, getOk = util.JsonGetString(&aclMap, "secret"); !getOk {
 				return nil, "acl.secret"
 			}
 		} else {

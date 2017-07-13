@@ -54,6 +54,10 @@ func consumeLoop(consumer *Consumer, client *kafka.Consumer, topic *string, rate
 				fmt.Fprintf(os.Stderr, "%% %v\n", e)
 				client.Unassign()
 			case *kafka.Message:
+				// 反序列化请求
+				if msg, isValid := DecodeMessage(e.Value); isValid {
+					fmt.Println(msg)
+				}
 				fmt.Printf("%% Message on %s:\n%s\n",
 					e.TopicPartition, string(e.Value))
 			case kafka.PartitionEOF:

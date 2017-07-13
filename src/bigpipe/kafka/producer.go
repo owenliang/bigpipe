@@ -57,15 +57,15 @@ func CreateProducer() (*Producer, error) {
 	return &producer, nil
 }
 
-func getPartition(partitions int, partitionKey *string) int32 {
+func getPartition(partitions int, partitionKey *string) int {
 	if len(*partitionKey) == 0 {
-		return rand.Int31() / int32(partitions)
+		return int(rand.Int31() / int32(partitions))
 	}
 	var hash uint64 = 0
 	for _, c := range *partitionKey {
 		hash = ((hash * 33) + uint64(c)) % uint64(partitions)
 	}
-	return int32(hash % uint64(partitions))
+	return int(hash % uint64(partitions))
 }
 
 // 发送一条数据到kafka
@@ -83,7 +83,7 @@ func (producer *Producer) SendMessage(topic *string, partitionKey *string, messa
 
 	// 推送消息
 	msg := kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: topic, Partition: message.Partition},
+		TopicPartition: kafka.TopicPartition{Topic: topic, Partition: int32(message.Partition)},
 		Value: value,
 	}
 	producer.client.ProduceChannel() <- &msg
