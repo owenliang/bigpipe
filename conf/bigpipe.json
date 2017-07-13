@@ -1,0 +1,17 @@
+{
+  "kafka.bootstrap.servers": "localhost:9092",
+
+  "kafka.producer.channel.size" : 1000000,
+  "kafka.producer.retries": 3,
+  "kafka.producer.topics": [
+    {"name": "test", "partitions": 1}
+  ],
+  "kafka.producer.acl": [
+    {"name": "system-1", "secret": "you are good", "topic": "test"},
+    {"name": "system-2", "secret": "you are bad", "topic": "test"}
+  ],
+
+  "http.server.port": 10086,
+  "http.server.read.timeout": 5000,
+  "http.server.write.timeout": 5000
+}

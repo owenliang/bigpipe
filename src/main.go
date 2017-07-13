@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 	"fmt"
+	"runtime"
+	"bigpipe"
 )
 
 func waitSignal() {
@@ -22,7 +24,18 @@ func waitSignal() {
 	}
 }
 
+func initEnv() {
+	// 开启多核
+	runtime.GOMAXPROCS(runtime.NumCPU())
+}
+
 func main() {
+	initEnv()
+
+	if !bigpipe.LoadConfig("/Users/smzdm/Documents/github/bigpipe/conf/bigpipe.json") {
+		os.Exit(-1)
+	}
+
 	// 创建kafka生产者
 	producer, err := kafka.CreateProducer()
 	if err != nil {

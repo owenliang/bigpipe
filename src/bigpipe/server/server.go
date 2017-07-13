@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 	"time"
+	"bigpipe"
+	"strconv"
 )
 
 type Server struct {
@@ -14,11 +16,13 @@ type Server struct {
 func CreateServer(handler *Handler) *Server {
 	srv := Server{httpHandler: handler}
 
+	bigConf := bigpipe.GetConfig()
+
 	// 创建HTTP服务器
 	srv.httpServer = &http.Server{
-		Addr:	":10086",				// 监听端口
-		ReadTimeout: 5 * time.Second,	// 读超时
-		WriteTimeout: 5 * time.Second,	// 写超时
+		Addr:	":" + strconv.Itoa(bigConf.Http_server_port), // 监听端口
+		ReadTimeout: time.Duration(bigConf.Http_server_read_timeout) * time.Millisecond,	// 读超时
+		WriteTimeout: time.Duration(bigConf.Http_server_write_timeout) * time.Millisecond,	// 写超时
 		Handler: handler.getMux(),	// 注册路由
 	}
 	return &srv;
