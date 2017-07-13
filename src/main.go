@@ -30,16 +30,28 @@ func initEnv() {
 }
 
 func main() {
+	// 初始化运行环境
 	initEnv()
 
+	// 加载配置
 	if !bigpipe.LoadConfig("/Users/smzdm/Documents/github/bigpipe/conf/bigpipe.json") {
 		os.Exit(-1)
 	}
 
 	// 创建kafka生产者
-	producer, err := kafka.CreateProducer()
-	if err != nil {
+	producer, errp := kafka.CreateProducer()
+	if errp != nil {
 		os.Exit(-1)
+	}
+
+	// 创建kafka消费者
+	consumer, errc := kafka.CreateConsumer()
+	if errc != nil {
+		os.Exit(-1)
+	}
+	// 启动kafka消费者
+	if !consumer.Run() {
+		os.Exit(-1);
 	}
 
 	// 创建http处理器

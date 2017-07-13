@@ -16,17 +16,26 @@ type ProducerACL struct {
 	Name string
 }
 
+type ConsumerInfo struct {
+	Topic string
+	GroupId string
+	RateLimit int
+}
+
 type Config struct {
+	// Kafka地址
 	Kafka_bootstrap_servers string
 
+	// Producer配置
 	Kafka_producer_channel_size int
 	Kafka_producer_retries int
+	Kafka_producer_topics map[string]TopicInfo // topic信息
+	Kafka_producer_acl map[string]ProducerACL // acl访问权限
 
-	// topic信息
-	Kafka_producer_topics map[string]TopicInfo
-	// acl访问权限
-	Kafka_producer_acl map[string]ProducerACL
+	// Consumer配置
+	Kafka_consumer_list []ConsumerInfo
 
+	// HTTP服务配置
 	Http_server_port int
 	Http_server_read_timeout int
 	Http_server_write_timeout int
@@ -81,6 +90,15 @@ func LoadConfig(path string) bool {
 		}
 	}
 
+	consumerArr := dict["kafka.consumer.list"].([]interface{})
+	for _, value := range consumerArr {
+		item := value.(map[string]interface{})
+		consumerInfo := ConsumerInfo{}
+		consumerInfo.Topic = item["topic"].(string)
+		consumerInfo.GroupId = item["groupId"].(string)
+		consumerInfo.RateLimit = int(item["rateLimit"].(float64))
+		config.Kafka_consumer_list = append(config.Kafka_consumer_list, consumerInfo)
+	}
 	return true
 }
 
