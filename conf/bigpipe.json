@@ -11,6 +11,11 @@
     {"name": "system-2", "secret": "you are bad", "topic": "test"}
   ],
 
+  "kafka.consumer.list": [
+    {"topic": "test", "groupId": "G1", "rateLimit": 1100},
+    {"topic": "test", "groupId": "G2", "rateLimit": 1200}
+  ],
+
   "http.server.port": 10086,
   "http.server.read.timeout": 5000,
   "http.server.write.timeout": 5000

@@ -148,7 +148,6 @@ func handleRpcCall(handler *Handler, w http.ResponseWriter, r *http.Request) boo
 
 // 测试用的rpc响应接口
 func handleServerMock(handler *Handler, w http.ResponseWriter, r *http.Request) bool {
-
 	return true
 }
 

@@ -4,12 +4,32 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"bigpipe"
 	"math/rand"
+	"fmt"
+	"runtime"
 )
 
 type Producer struct {
 	client *kafka.Producer
 }
 
+// 处理消息发送结果
+func handleEvents(producer *kafka.Producer) {
+	for e := range producer.Events() {
+		switch ev := e.(type) {
+		case *kafka.Message:
+			if ev.TopicPartition.Error != nil {
+				fmt.Printf("Delivery failed: %v\n", ev.TopicPartition.Error)
+			} else {
+				fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
+					*ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset)
+			}
+		default:
+			fmt.Printf("Ignored event: %s\n", ev)
+		}
+	}
+}
+
+// 创建生产者
 func CreateProducer() (*Producer, error) {
 	producer := Producer{}
 
@@ -27,6 +47,12 @@ func CreateProducer() (*Producer, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 处理消息发送结果（多个goroutine并发处理）
+	for i := 0; i < runtime.NumCPU(); i = i + 1 {
+		go handleEvents(client)
+	}
+
 	producer.client = client
 	return &producer, nil
 }
