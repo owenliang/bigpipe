@@ -49,8 +49,12 @@
 
 # TODO
 * client支持流速控制
+* 引入支持版本的包管理工具glide
+* 一键编译安装脚本
+* 性能压测和BUG修复
 
 # 特别说明
 * bigpipe基于rebalanced consumer group工作，可以多进程部署，自动负载均衡
 * bigpipe支持优雅退出，不损失任何数据
 * bigpipe在正常退出的情况下，保障at least once的投递语义
+* bigpipe永远不会阻塞客户端的返回
