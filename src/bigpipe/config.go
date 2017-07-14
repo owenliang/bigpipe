@@ -23,6 +23,10 @@ type ConsumerInfo struct {
 }
 
 type Config struct {
+	// log配置
+	Log_directory string
+	Log_level int
+
 	// Kafka地址
 	Kafka_bootstrap_servers string
 	Kafka_topics map[string]TopicInfo // topic信息
@@ -56,6 +60,8 @@ func LoadConfig(path string) bool {
 		return false
 	}
 
+	config.Log_directory = dict["log.directory"].(string)
+	config.Log_level = int(dict["log.level"].(float64))
 	config.Kafka_bootstrap_servers = dict["kafka.bootstrap.servers"].(string)
 	config.Kafka_producer_channel_size = int(dict["kafka.producer.channel.size"].(float64))
 	config.Kafka_producer_retries = int(dict["kafka.producer.retries"].(float64))

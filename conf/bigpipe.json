@@ -1,4 +1,7 @@
 {
+  "log.level": 5,
+  "log.directory": "/Users/smzdm/Documents/github/bigpipe/logs",
+
   "kafka.bootstrap.servers": "localhost:9092",
   "kafka.topics": [
     {"name": "test", "partitions": 3}

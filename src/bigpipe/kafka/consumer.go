@@ -4,7 +4,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"bigpipe"
 	"fmt"
-	"os"
+	"bigpipe/log"
 )
 
 type Consumer struct {
@@ -44,31 +44,27 @@ func CreateConsumer() (*Consumer, error) {
 
 // 处理kafka消息
 func consumeLoop(consumer *Consumer, client *kafka.Consumer, info *bigpipe.ConsumerInfo) {
-	run := true
-
-	for run {
+	for true {
 		select {
 		case ev := <-client.Events():
 			switch e := ev.(type) {
 			case kafka.AssignedPartitions:	// 分配partition
-				fmt.Fprintf(os.Stderr, "%% %v\n", e)
+				log.INFO( "%% %v\n", e)
 				client.Assign(e.Partitions)
 			case kafka.RevokedPartitions:	// 重置partition
-				fmt.Fprintf(os.Stderr, "%% %v\n", e)
+				log.INFO("%% %v\n", e)
 				client.Unassign()
 			case *kafka.Message:
 				// 反序列化请求
 				if msg, isValid := DecodeMessage(e.Value); isValid {
 					fmt.Println(msg)
 				}
-				fmt.Printf("%% Message on %s:\n%s\n",
+				log.INFO("%% Message on %s:\n%s\n",
 					e.TopicPartition, string(e.Value))
-				client.CommitMessage(e)
 			case kafka.PartitionEOF:
-				fmt.Printf("%% Reached %v\n", e)
+				log.INFO("%% Reached %v\n", e)
 			case kafka.Error:
-				fmt.Fprintf(os.Stderr, "%% Error: %v\n", e)
-				run = false
+				log.FATAL("%% Error: %v\n", e)
 			}
 		}
 	}

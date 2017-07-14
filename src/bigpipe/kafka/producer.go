@@ -4,8 +4,8 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"bigpipe"
 	"math/rand"
-	"fmt"
 	"runtime"
+	"bigpipe/log"
 )
 
 type Producer struct {
@@ -18,13 +18,13 @@ func handleEvents(producer *kafka.Producer) {
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
-				fmt.Printf("Delivery failed: %v\n", ev.TopicPartition.Error)
+				log.WARNING("Delivery failed: %v\n", ev.TopicPartition.Error)
 			} else {
-				fmt.Printf("Delivered message to topic %s [%d] at offset %v\n",
+				log.INFO("Delivered message to topic %s [%d] at offset %v\n",
 					*ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset)
 			}
 		default:
-			fmt.Printf("Ignored event: %s\n", ev)
+			log.INFO("Ignored event: %s\n", ev)
 		}
 	}
 }
