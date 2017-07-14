@@ -12,6 +12,7 @@ type asyncSink struct {
 	file *os.File	// 文件指针
 	logChan chan[]byte	// 日志队列
 	termChan chan int 	// 退出事件
+	waitChan chan int	// 通知logger可以退出
 }
 
 func (s *asyncSink) Write(p []byte) (n int, err error) {
@@ -36,9 +37,8 @@ func (s *asyncSink) rotateFile() {
 	}
 }
 
-func (s *asyncSink) close(waitChan *chan int) {
+func (s *asyncSink) close() {
 	s.termChan <- 1
-	*waitChan <- 1 // 通知looger退出
 }
 
 func (s *asyncSink) consumeLog() {
@@ -64,12 +64,14 @@ loop:
 			}
 		}
 	}
+	s.waitChan <- 1 // 通知logger退出
 }
 
-func newAsyncSink() *asyncSink {
+func newAsyncSink(waitChan chan int) *asyncSink {
 	sinker := asyncSink{}
 	sinker.termChan = make(chan int, 1)
 	sinker.logChan = make(chan []byte, 100000)
+	sinker.waitChan = waitChan
 	go sinker.consumeLog()	// 独立的协程消费管道里的日志
 	return &sinker
 }

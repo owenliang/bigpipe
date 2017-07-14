@@ -13,6 +13,7 @@ type Consumer struct {
 	httpClients []client.IClient	// HTTP客户端
 	termCh chan int 	// 退出通知
 	waitCh chan int 	// 退出等待
+	pending []chan byte	// 正在并发中的http请求个数（超过限制会暂停消费）
 }
 
 // 创建消费者（多个彼此独立）
@@ -50,6 +51,9 @@ func CreateConsumer() (*Consumer, error) {
 			return nil, herr
 		}
 		consumer.httpClients= append(consumer.httpClients, hCli)
+
+		// pending管道
+		consumer.pending = append(consumer.pending, make(chan byte, consumerInfo.Concurrency))
 	}
 
 	consumer.termCh = make(chan int, len(bigConf.Kafka_consumer_list))
@@ -75,9 +79,11 @@ func (consumer *Consumer) handleMessage(value []byte, idx int) {
 	if msg, isValid := proto.DecodeMessage(value); isValid {
 		log.INFO("消费消息:%s", string(value))
 
+		// 推入1个pending
+		consumer.pending[idx] <- byte(1)
 		// 发起HTTP调用
 		cli := consumer.httpClients[idx]
-		cli.Call(msg)
+		go cli.Call(msg, consumer.pending[idx])
 	} else {
 		log.ERROR("消息格式错误:%s", string(value))
 	}
@@ -141,8 +147,13 @@ finalLoop:
 		}
 	}
 
-	// TODO: 等待所有http调用结束
-
+	// 等待所有异步http调用结束
+	for true {
+		if len(consumer.pending[idx]) == 0 {
+			log.DEBUG("Consumer Goroutine（%d）Exit", idx)
+			break
+		}
+	}
 	consumer.waitCh <- 1
 }
 

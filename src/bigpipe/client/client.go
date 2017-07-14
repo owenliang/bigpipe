@@ -1,35 +1,23 @@
 package client
 
 import (
-	"net/http"
 	"bigpipe"
-	"bigpipe/log"
 	"bigpipe/proto"
+	"time"
 )
 
-// 顺序阻塞调用
-type SyncClient struct {
-	httpClient http.Client	// 线程安全
-	rateLimit int 	// 每秒限速
-	retries int	// 重试次数
-	timeout int // 请求超时时间
-}
-
 type IClient interface {
-	Call(message *proto.CallMessage)
+	Call(message *proto.CallMessage, endChan chan byte) bool
 }
 
-func CreateClient(info *bigpipe.ConsumerInfo) (*SyncClient, error) {
-	client := SyncClient{
+func CreateClient(info *bigpipe.ConsumerInfo) (IClient, error) {
+	// 根据配置创建不同类型的客户端
+	client := AsyncClient{
 		rateLimit: info.RateLimit,
 		retries: info.Retries,
 		timeout: info.Timeout,
 	}
+	// 客户端超时时间
+	client.httpClient.Timeout = time.Duration(client.timeout) * time.Millisecond
 	return &client, nil
-}
-
-func (client *SyncClient) Call(message *proto.CallMessage) {
-	// client.httpClient.Do()
-
-	log.DEBUG("HTTP调用结束:%v", *message)
 }

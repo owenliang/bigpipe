@@ -15,8 +15,8 @@
   ],
 
   "kafka.consumer.list": [
-    {"topic": "test", "groupId": "G1", "rateLimit": 2000, "timeout": 3000, "retries": 2},
-    {"topic": "test", "groupId": "G2", "rateLimit": 2000, "timeout": 3000, "retries": 2}
+    {"topic": "test", "groupId": "G1", "rateLimit": 2000, "timeout": 3000, "retries": 2, "concurrency": 10},
+    {"topic": "test", "groupId": "G2", "rateLimit": 2000, "timeout": 3000, "retries": 2, "concurrency": 10}
   ],
 
   "http.server.port": 10086,

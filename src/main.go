@@ -49,6 +49,7 @@ func main() {
 		log.ERROR("创建kafka producer失败")
 		os.Exit(-1)
 	}
+	log.INFO("启动kafka producer成功")
 
 	// 创建kafka消费者
 	consumer, errc := kafka.CreateConsumer()
@@ -61,6 +62,7 @@ func main() {
 		log.ERROR("启动kafka生产者失败")
 		os.Exit(-1);
 	}
+	log.INFO("启动kafka consumer成功")
 
 	// 创建http处理器
 	handler := server.CreateHandler(producer)
@@ -70,6 +72,7 @@ func main() {
 
 	// 启动http服务端
 	go srv.Run()
+	log.INFO("启动HTTP服务端成功")
 
 	log.INFO("bigpipe启动成功")
 
@@ -89,4 +92,6 @@ func main() {
 
 	// 关闭日志
 	log.DestroyLogger()
+
+	os.Exit(0)
 }

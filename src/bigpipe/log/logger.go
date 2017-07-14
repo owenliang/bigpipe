@@ -12,12 +12,13 @@ type logger struct {
 	sinker ISink	// 日志输出类（接口抽象）
 	level int // 日志级别
 	directory string  // 存储目录
+	waitChan chan int // 等待sink退出
 }
 
 // sink接口
 type ISink interface {
 	io.Writer	// 继承
-	close(*chan int)	// 关闭
+	close()	// 关闭
 }
 
 const (
@@ -45,16 +46,16 @@ func InitLogger() {
 
 	gLogger.level = bigConf.Log_level
 	gLogger.directory = bigConf.Log_directory
+	gLogger.waitChan = make(chan int)
 
 	// 输出器
-	gLogger.sinker = newAsyncSink()
+	gLogger.sinker = newAsyncSink(gLogger.waitChan)
 }
 
 func DestroyLogger() {
 	if gLogger.sinker != nil {
-		waitChan := make(chan int, 1)
-		gLogger.sinker.close(&waitChan)
-		<- waitChan
+		gLogger.sinker.close()
+		<- gLogger.waitChan
 	}
 }
 
