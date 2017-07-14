@@ -20,6 +20,8 @@ type ConsumerInfo struct {
 	Topic string
 	GroupId string
 	RateLimit int
+	Retries int
+	Timeout int
 }
 
 type Config struct {
@@ -103,6 +105,8 @@ func LoadConfig(path string) bool {
 		consumerInfo.Topic = item["topic"].(string)
 		consumerInfo.GroupId = item["groupId"].(string)
 		consumerInfo.RateLimit = int(item["rateLimit"].(float64))
+		consumerInfo.Retries = int(item["retries"].(float64))
+		consumerInfo.Timeout = int(item["timeout"].(float64))
 		config.Kafka_consumer_list = append(config.Kafka_consumer_list, consumerInfo)
 		// 检查acl涉及的topic是否配置
 		if _, exists := config.Kafka_topics[consumerInfo.Topic]; !exists {

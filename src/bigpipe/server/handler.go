@@ -8,6 +8,7 @@ import (
 	"bigpipe"
 	"time"
 	"bigpipe/util"
+	"bigpipe/proto"
 )
 
 type Handler struct {
@@ -54,9 +55,9 @@ func aclCheck(request *callRequest) bool {
 }
 
 // 生成kafka消息
-func makeCallMessage(req *http.Request, call *callRequest) *kafka.CallMessage {
+func makeCallMessage(req *http.Request, call *callRequest) *proto.CallMessage {
 	now := time.Now()
-	msg := kafka.CallMessage{
+	msg := proto.CallMessage{
 		Headers: req.Header,
 		Url: call.url,
 		Data: call.data,

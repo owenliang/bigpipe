@@ -4,10 +4,13 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"bigpipe"
 	"bigpipe/log"
+	"bigpipe/client"
+	"bigpipe/proto"
 )
 
 type Consumer struct {
 	clients []*kafka.Consumer	// 消费者数组
+	httpClients []client.IClient	// HTTP客户端
 	termCh chan int 	// 退出通知
 	waitCh chan int 	// 退出等待
 }
@@ -18,7 +21,8 @@ func CreateConsumer() (*Consumer, error) {
 
 	consumer := Consumer{}
 	for _, consumerInfo := range bigConf.Kafka_consumer_list {
-		client, err := kafka.NewConsumer(&kafka.ConfigMap{
+		// Kafka 客户端
+		cli, err := kafka.NewConsumer(&kafka.ConfigMap{
 			"bootstrap.servers":               bigConf.Kafka_bootstrap_servers,
 			"group.id":                        consumerInfo.GroupId,
 			"heartbeat.interval.ms": 1000, // 消费者1秒心跳一次
@@ -34,11 +38,18 @@ func CreateConsumer() (*Consumer, error) {
 		}
 		// 订阅topic
 		topics := []string{consumerInfo.Topic}
-		err = client.SubscribeTopics(topics, nil)
+		err = cli.SubscribeTopics(topics, nil)
 		if err != nil {
 			return nil, err
 		}
-		consumer.clients = append(consumer.clients, client)
+		consumer.clients = append(consumer.clients, cli)
+
+		// Http 客户端
+		hCli, herr := client.CreateClient(&consumerInfo)
+		if herr != nil {
+			return nil, herr
+		}
+		consumer.httpClients= append(consumer.httpClients, hCli)
 	}
 
 	consumer.termCh = make(chan int, len(bigConf.Kafka_consumer_list))
@@ -59,27 +70,32 @@ func DestroyConsumer(consumer *Consumer) {
 }
 
 // 解析消息，发起http调用
-func (consumer *Consumer) handleMessage(value []byte) {
+func (consumer *Consumer) handleMessage(value []byte, idx int) {
 	// 反序列化请求
-	if msg, isValid := DecodeMessage(value); isValid {
+	if msg, isValid := proto.DecodeMessage(value); isValid {
 		log.INFO("消费消息:%s", string(value))
-		msg = msg
+
+		// 发起HTTP调用
+		cli := consumer.httpClients[idx]
+		cli.Call(msg)
 	} else {
 		log.ERROR("消息格式错误:%s", string(value))
 	}
 }
 
 // 退出前只处理普通消息
-func (consumer *Consumer) handleLeftEvent(ev kafka.Event, client *kafka.Consumer, info *bigpipe.ConsumerInfo) {
+func (consumer *Consumer) handleLeftEvent(ev kafka.Event, idx int, info *bigpipe.ConsumerInfo) {
 	switch e := ev.(type) {
 	case *kafka.Message:
-		consumer.handleMessage(e.Value)
+		consumer.handleMessage(e.Value, idx)
 		log.INFO("%% Message on %s:\n%s\n", e.TopicPartition, string(e.Value))
 	}
 }
 
 // 处理事件
-func (consumer *Consumer)handleEvent(ev kafka.Event, client *kafka.Consumer, info *bigpipe.ConsumerInfo) {
+func (consumer *Consumer)handleEvent(ev kafka.Event, idx int, info *bigpipe.ConsumerInfo) {
+	client := consumer.clients[idx]
+
 	switch e := ev.(type) {
 	case kafka.AssignedPartitions:	// 分配partition
 		log.INFO( "%% %v\n", e)
@@ -88,7 +104,7 @@ func (consumer *Consumer)handleEvent(ev kafka.Event, client *kafka.Consumer, inf
 		log.INFO("%% %v\n", e)
 		client.Unassign()
 	case *kafka.Message:
-		consumer.handleMessage(e.Value)
+		consumer.handleMessage(e.Value, idx)
 		log.INFO("%% Message on %s:\n%s\n", e.TopicPartition, string(e.Value))
 	case kafka.PartitionEOF:
 		log.INFO("%% Reached %v\n", e)
@@ -98,13 +114,14 @@ func (consumer *Consumer)handleEvent(ev kafka.Event, client *kafka.Consumer, inf
 }
 
 // 处理kafka消息
-func consumeLoop(consumer *Consumer, client *kafka.Consumer, info *bigpipe.ConsumerInfo) {
+func (consumer *Consumer)consumeLoop(idx int, info *bigpipe.ConsumerInfo) {
+	client := consumer.clients[idx]
 loop:
 	for true {
 		select {
 		case ev := <-client.Events():
 			// 处理事件
-			consumer.handleEvent(ev, client, info)
+			consumer.handleEvent(ev, idx, info)
 		case <- consumer.termCh:
 			// 终止consumer继续向channel内投放数据
 			client.Close()
@@ -118,7 +135,7 @@ finalLoop:
 		select {
 		case ev := <-client.Events():
 			// 处理事件
-			consumer.handleLeftEvent(ev, client, info)
+			consumer.handleLeftEvent(ev, idx, info)
 		default:
 			break finalLoop
 		}
@@ -133,10 +150,9 @@ finalLoop:
 func (consumer *Consumer) Run() bool {
 	bigConf := bigpipe.GetConfig()
 
-	for i, client := range consumer.clients {
-		go consumeLoop(
-			consumer,
-			client,
+	for i, _ := range consumer.clients {
+		go consumer.consumeLoop(
+			i,
 			&bigConf.Kafka_consumer_list[i],
 		)
 	}

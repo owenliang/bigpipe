@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"bigpipe/log"
 	"time"
+	"bigpipe/proto"
 )
 
 type Producer struct {
@@ -78,14 +79,14 @@ func getPartition(partitions int, partitionKey *string) int {
 }
 
 // 发送一条数据到kafka
-func (producer *Producer) SendMessage(topic *string, partitionKey *string, message *CallMessage) bool {
+func (producer *Producer) SendMessage(topic *string, partitionKey *string, message *proto.CallMessage) bool {
 	conf := bigpipe.GetConfig()
 
 	// 计算分区
 	message.Partition = getPartition(conf.Kafka_topics[*topic].Partitions, partitionKey)
 
 	// 序列化消息
-	value, err := EncodeMessage(message)
+	value, err := proto.EncodeMessage(message)
 	if err != nil {
 		return false	// 序列化失败
 	}

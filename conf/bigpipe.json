@@ -8,15 +8,15 @@
   ],
 
   "kafka.producer.channel.size" : 200000,
-  "kafka.producer.retries": 3,
+  "kafka.producer.retries": 2,
   "kafka.producer.acl": [
     {"name": "system-1", "secret": "you are good", "topic": "test"},
     {"name": "system-2", "secret": "you are bad", "topic": "test"}
   ],
 
   "kafka.consumer.list": [
-    {"topic": "test", "groupId": "G1", "rateLimit": 1100},
-    {"topic": "test", "groupId": "G2", "rateLimit": 1200}
+    {"topic": "test", "groupId": "G1", "rateLimit": 2000, "timeout": 3000, "retries": 2},
+    {"topic": "test", "groupId": "G2", "rateLimit": 2000, "timeout": 3000, "retries": 2}
   ],
 
   "http.server.port": 10086,
