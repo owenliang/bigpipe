@@ -9,6 +9,9 @@
 * [confluentinc-kafka-go](https://github.com/confluentinc/confluent-kafka-go)
 * [librdkafka](https://github.com/edenhill/librdkafka)
 
+# 调用示例
+    curl localhost:10086/rpc/call -d '{"acl": {"name":"system-1","secret":"i am good"},"url":"http://localhost:10086/rpc/server/mock","data":"hello123123123","partition_key": "暂时用不到"}'
+
 # 配置说明
     {
       "log.level": 5,
