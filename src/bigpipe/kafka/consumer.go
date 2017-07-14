@@ -20,10 +20,13 @@ func CreateConsumer() (*Consumer, error) {
 		client, err := kafka.NewConsumer(&kafka.ConfigMap{
 			"bootstrap.servers":               bigConf.Kafka_bootstrap_servers,
 			"group.id":                        consumerInfo.GroupId,
-			"session.timeout.ms":              30000,
+			"heartbeat.interval.ms": 1000, // 消费者1秒心跳一次
+			"session.timeout.ms":              30000,	// 30秒没有心跳响应则退出
 			"go.events.channel.enable":        true,	// 通过管道读取数据
-			"go.application.rebalance.enable": true,	// 启动负载均衡
-			"auto.offset.reset": 	"latest",
+			"go.application.rebalance.enable": true,	// 负载均衡变化反馈给应用处理
+			"auto.offset.reset": 	"latest",	// 如果之前没有offset，那么从最新位置开始消费
+			"enable.auto.commit":	true, 	// 自动提交offset
+			"auto.commit.interval.ms": 1000, 	// 1秒提交一次offset
 		})
 		if err != nil {
 			return nil, err
@@ -40,17 +43,17 @@ func CreateConsumer() (*Consumer, error) {
 }
 
 // 处理kafka消息
-func consumeLoop(consumer *Consumer, client *kafka.Consumer, topic *string, rateLimit int) {
+func consumeLoop(consumer *Consumer, client *kafka.Consumer, info *bigpipe.ConsumerInfo) {
 	run := true
 
 	for run {
 		select {
 		case ev := <-client.Events():
 			switch e := ev.(type) {
-			case kafka.AssignedPartitions:
+			case kafka.AssignedPartitions:	// 分配partition
 				fmt.Fprintf(os.Stderr, "%% %v\n", e)
 				client.Assign(e.Partitions)
-			case kafka.RevokedPartitions:
+			case kafka.RevokedPartitions:	// 重置partition
 				fmt.Fprintf(os.Stderr, "%% %v\n", e)
 				client.Unassign()
 			case *kafka.Message:
@@ -60,6 +63,7 @@ func consumeLoop(consumer *Consumer, client *kafka.Consumer, topic *string, rate
 				}
 				fmt.Printf("%% Message on %s:\n%s\n",
 					e.TopicPartition, string(e.Value))
+				client.CommitMessage(e)
 			case kafka.PartitionEOF:
 				fmt.Printf("%% Reached %v\n", e)
 			case kafka.Error:
@@ -78,8 +82,7 @@ func (consumer *Consumer) Run() bool {
 		go consumeLoop(
 			consumer,
 			client,
-			&bigConf.Kafka_consumer_list[i].Topic,
-			bigConf.Kafka_consumer_list[i].RateLimit,
+			&bigConf.Kafka_consumer_list[i],
 		)
 	}
 	return true

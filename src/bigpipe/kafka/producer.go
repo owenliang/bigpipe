@@ -69,22 +69,26 @@ func getPartition(partitions int, partitionKey *string) int {
 }
 
 // 发送一条数据到kafka
-func (producer *Producer) SendMessage(topic *string, partitionKey *string, message *CallMessage) {
+func (producer *Producer) SendMessage(topic *string, partitionKey *string, message *CallMessage) bool {
 	conf := bigpipe.GetConfig()
 
 	// 计算分区
-	message.Partition = getPartition(conf.Kafka_producer_topics[*topic].Partitions, partitionKey)
+	message.Partition = getPartition(conf.Kafka_topics[*topic].Partitions, partitionKey)
 
 	// 序列化消息
 	value, err := EncodeMessage(message)
 	if err != nil {
-		return	// 序列化失败
+		return false	// 序列化失败
 	}
 
-	// 推送消息
 	msg := kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: topic, Partition: int32(message.Partition)},
-		Value: value,
+		Value:          value,
 	}
-	producer.client.ProduceChannel() <- &msg
+	select {
+	case producer.client.ProduceChannel() <- &msg:	// 推送消息
+		return true
+	default:	// 队列满了, 那么返回失败
+		return false
+	}
 }

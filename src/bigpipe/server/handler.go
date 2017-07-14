@@ -132,8 +132,11 @@ func handleRpcCall(handler *Handler, w http.ResponseWriter, r *http.Request) boo
 	message := makeCallMessage(r, request)
 
 	// 在新协程中发送, 避免阻塞用户请求
- 	go handler.producer.SendMessage(&request.acl.Topic, &request.partitionKey, message)
-	return packResponse(w, 0, "发送成功", "")
+ 	if sent := handler.producer.SendMessage(&request.acl.Topic, &request.partitionKey, message); sent {
+		return packResponse(w, 0, "发送成功", "")
+	} else {
+		return packResponse(w, -1, "超过负载", "")
+	}
 }
 
 // 测试用的rpc响应接口

@@ -25,11 +25,11 @@ type ConsumerInfo struct {
 type Config struct {
 	// Kafka地址
 	Kafka_bootstrap_servers string
+	Kafka_topics map[string]TopicInfo // topic信息
 
 	// Producer配置
 	Kafka_producer_channel_size int
 	Kafka_producer_retries int
-	Kafka_producer_topics map[string]TopicInfo // topic信息
 	Kafka_producer_acl map[string]ProducerACL // acl访问权限
 
 	// Consumer配置
@@ -64,14 +64,14 @@ func LoadConfig(path string) bool {
 	config.Http_server_read_timeout = int(dict["http.server.read.timeout"].(float64))
 	config.Http_server_write_timeout = int(dict["http.server.write.timeout"].(float64))
 
-	config.Kafka_producer_topics = map[string]TopicInfo{}
+	config.Kafka_topics = map[string]TopicInfo{}
 
-	topicsArr := dict["kafka.producer.topics"].([]interface{})
+	topicsArr := dict["kafka.topics"].([]interface{})
 	for _, value := range topicsArr {
 		topicMap := value.(map[string]interface{})
 		name := topicMap["name"].(string)
 		partitions := int(topicMap["partitions"].(float64))
-		config.Kafka_producer_topics[name] = TopicInfo{Partitions: partitions}
+		config.Kafka_topics[name] = TopicInfo{Partitions: partitions}
 	}
 
 	config.Kafka_producer_acl = map[string]ProducerACL{}
@@ -84,8 +84,8 @@ func LoadConfig(path string) bool {
 		topic := aclMap["topic"].(string)
 		config.Kafka_producer_acl[name] = ProducerACL{Name: name, Secret: secret, Topic: topic}
 		// 检查acl涉及的topic是否配置
-		if _, exists := config.Kafka_producer_topics[topic]; !exists {
-			fmt.Println("ACL中配置的topic: " + topic + " 不存在,请检查kafka.producer.topics.")
+		if _, exists := config.Kafka_topics[topic]; !exists {
+			fmt.Println("ACL中配置的topic: " + topic + " 不存在,请检查kafka.topics.")
 			return false
 		}
 	}
@@ -98,6 +98,11 @@ func LoadConfig(path string) bool {
 		consumerInfo.GroupId = item["groupId"].(string)
 		consumerInfo.RateLimit = int(item["rateLimit"].(float64))
 		config.Kafka_consumer_list = append(config.Kafka_consumer_list, consumerInfo)
+		// 检查acl涉及的topic是否配置
+		if _, exists := config.Kafka_topics[consumerInfo.Topic]; !exists {
+			fmt.Println("consumer中配置的topic: " + consumerInfo.Topic + " 不存在,请检查kafka.topics.")
+			return false
+		}
 	}
 	return true
 }

@@ -1,11 +1,11 @@
 {
   "kafka.bootstrap.servers": "localhost:9092",
-
-  "kafka.producer.channel.size" : 1000000,
-  "kafka.producer.retries": 3,
-  "kafka.producer.topics": [
-    {"name": "test", "partitions": 1}
+  "kafka.topics": [
+    {"name": "test", "partitions": 3}
   ],
+
+  "kafka.producer.channel.size" : 200000,
+  "kafka.producer.retries": 3,
   "kafka.producer.acl": [
     {"name": "system-1", "secret": "you are good", "topic": "test"},
     {"name": "system-2", "secret": "you are bad", "topic": "test"}
