@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"runtime"
 	"bigpipe/log"
+	"time"
 )
 
 type Producer struct {
@@ -55,6 +56,14 @@ func CreateProducer() (*Producer, error) {
 
 	producer.client = client
 	return &producer, nil
+}
+
+func DestroyProducer(producer *Producer) {
+	// 等待producer堆积数量降为0
+	for producer.client.Len() != 0 {
+		time.Sleep(1 * time.Second)	// 睡眠1秒再次检测
+	}
+	log.INFO("Producer关闭成功")
 }
 
 func getPartition(partitions int, partitionKey *string) int {

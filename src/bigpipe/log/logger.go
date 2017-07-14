@@ -1,7 +1,6 @@
 package log
 
 import (
-	"log"
 	"fmt"
 	"time"
 	"bigpipe"
@@ -10,7 +9,6 @@ import (
 
 // 日志管理
 type logger struct {
-	log *log.Logger	// 内部挂载了asyncSink
 	sinker ISink	// 日志输出类（接口抽象）
 	level int // 日志级别
 	directory string  // 存储目录
@@ -50,8 +48,6 @@ func InitLogger() {
 
 	// 输出器
 	gLogger.sinker = newAsyncSink()
-	// 系统log库
-	gLogger.log = log.New(gLogger.sinker, "", 0)
 }
 
 func DestroyLogger() {
@@ -67,8 +63,9 @@ func (logger *logger)queueLog(level int, userLog *string) {
 		return
 	}
 	now := time.Now()
-	logger.log.Printf("[%s][%04d-%02d-%02d %02d:%02d:%02d:%03d] %s", levelStr[level],
+	row := fmt.Sprintf("[%s][%04d-%02d-%02d %02d:%02d:%02d:%03d] %s\n", levelStr[level],
 		now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), now.Nanosecond() / 1000000, *userLog)
+	logger.sinker.Write([]byte(row))
 }
 
 func FATAL(format string, v ...interface{}) {

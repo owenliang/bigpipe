@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"fmt"
 	"runtime"
 	"bigpipe"
 	"bigpipe/log"
@@ -21,7 +20,7 @@ func waitSignal() {
 	for {
 		select {
 			case <- c :
-				fmt.Println("bye, bigpipe ")
+				log.INFO("收到退出命令,开始优雅退出")
 				break loop
 		}
 	}
@@ -76,6 +75,15 @@ func main() {
 
 	// 等待命令行信号
 	waitSignal()
+
+	// 关闭server
+	server.DestroyServer(srv)
+
+	// 等待并销毁producer
+	kafka.DestroyProducer(producer)
+
+	// 等待并销毁consumer
+	kafka.DestroyConsumer(consumer)
 
 	log.INFO("bigpipe结束运行")
 

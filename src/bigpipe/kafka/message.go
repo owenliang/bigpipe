@@ -43,15 +43,25 @@ func DecodeMessage(data []byte) (*CallMessage, bool) {
 	if message.Partition, getOk = util.JsonGetInt(&dict, "Partition"); !getOk {
 		return nil, false
 	}
-	if message.CreateTime, getOk = util.JsonGetInt(&dict, "Partition"); !getOk {
+	if message.CreateTime, getOk = util.JsonGetInt(&dict, "CreateTime"); !getOk {
 		return nil, false
 	}
+
+	message.Headers = make(map[string][]string)
 
 	if headers, exist := dict["Headers"]; exist {
 		if headersDict, isMap := headers.(map[string]interface{}); isMap {
 			for key, value := range headersDict {
-				if headerArr, isArr := value.([]string); isArr {
-					message.Headers[key] = headerArr
+				if headerArr, isArr := value.([]interface{}); isArr {
+					for _, val := range headerArr {
+						hArr := []string{}
+						if strVal, isStr := val.(string); isStr {
+							hArr = append(hArr, strVal)
+						} else {
+							return nil, false
+						}
+						message.Headers[key] = hArr
+					}
 				} else {
 					return nil, false
 				}

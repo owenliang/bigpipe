@@ -5,6 +5,7 @@ import (
 	"time"
 	"bigpipe"
 	"strconv"
+	"bigpipe/log"
 )
 
 type Server struct {
@@ -26,6 +27,14 @@ func CreateServer(handler *Handler) *Server {
 		Handler: handler.getMux(),	// 注册路由
 	}
 	return &srv;
+}
+
+func DestroyServer(server *Server) {
+	if err := server.httpServer.Shutdown(nil); err != nil {
+		log.ERROR("关闭HTTP服务器错误%v", err)
+	} else {
+		log.INFO("HTTP服务器关闭成功")
+	}
 }
 
 // 运行服务器
