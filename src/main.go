@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"bigpipe"
 	"bigpipe/log"
+	"flag"
+	"fmt"
 )
 
 func waitSignal() {
@@ -31,12 +33,27 @@ func initEnv() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
+var (
+	configFile string	// 配置文件路径
+)
+
+func initCmd() {
+	// 配置文件
+	flag.StringVar(&configFile, "config", "./conf/bigpipe.json", "abs path to bigpipe.json")
+	// 解析命令行参数
+	flag.Parse()
+}
+
 func main() {
+	// 初始化命令行参数
+	initCmd()
+
 	// 初始化运行环境
 	initEnv()
 
 	// 加载配置
-	if !bigpipe.LoadConfig("/Users/smzdm/Documents/github/bigpipe/conf/bigpipe.json") {
+	if !bigpipe.LoadConfig(configFile) {
+		fmt.Println("配置文件加载失败:" + configFile)
 		os.Exit(-1)
 	}
 

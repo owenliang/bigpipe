@@ -1,6 +1,6 @@
 {
   "log.level": 5,
-  "log.directory": "/Users/smzdm/Documents/github/bigpipe/logs",
+  "log.directory": "./logs",
 
   "kafka.bootstrap.servers": "localhost:9092",
   "kafka.topics": [
@@ -15,8 +15,8 @@
   ],
 
   "kafka.consumer.list": [
-    {"topic": "test", "groupId": "G1", "rateLimit": 2000, "timeout": 3000, "retries": 2, "concurrency": 10},
-    {"topic": "test", "groupId": "G2", "rateLimit": 2000, "timeout": 3000, "retries": 2, "concurrency": 10}
+    {"topic": "test", "groupId": "G1", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5},
+    {"topic": "test", "groupId": "G2", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5}
   ],
 
   "http.server.port": 10086,
