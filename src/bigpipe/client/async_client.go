@@ -12,21 +12,22 @@ import (
 // 顺序阻塞调用
 type AsyncClient struct {
 	httpClient http.Client	// 线程安全
-	rateLimit int 	// 每秒限速
 	retries int	// 重试次数
 	timeout int // 请求超时时间
 	pending chan byte	// 正在并发中的http请求个数
+	rateLimit *TokenBucket
 }
 
 func CreateAsyncClient(info *bigpipe.ConsumerInfo) (IClient, error) {
 	// 根据配置创建不同类型的客户端
 	client := AsyncClient{
-		rateLimit: info.RateLimit,
 		retries: info.Retries,
 		timeout: info.Timeout,
 	}
 	// 并发控制管道
 	client.pending = make(chan byte, info.Concurrency)
+	// 流速控制器
+	client.rateLimit = CreateBucketForRate(float64(info.RateLimit))
 	// 客户端超时时间
 	client.httpClient.Timeout = time.Duration(client.timeout) * time.Millisecond
 	return &client, nil
@@ -64,7 +65,8 @@ func (client *AsyncClient) Call(message *proto.CallMessage) {
 	// 并发控制
 	client.pending <- byte(1)
 
-	// TODO: 流速控制
+	// 流速控制
+	client.rateLimit.getToken(1)
 
 	// 启动协程发送请求
 	go client.callWithRetry(message)

@@ -30,7 +30,7 @@ func (s *asyncSink) rotateFile() {
 			return
 		}
 		if s.file != nil {
-			file.Close()
+			s.file.Close()
 		}
 		s.curHour = hour
 		s.file = file

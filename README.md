@@ -15,7 +15,7 @@
 # 配置说明
     {
       "log.level": 5,
-      "log.directory": "/Users/owenliang/Documents/github/bigpipe/logs",
+      "log.directory": "./logs",
 
       "kafka.bootstrap.servers": "localhost:9092",
       "kafka.topics": [
@@ -30,8 +30,8 @@
       ],
 
       "kafka.consumer.list": [
-        {"topic": "test", "groupId": "G1", "rateLimit": 2000, "timeout": 3000, "retries": 2, "concurrency": 10},
-        {"topic": "test", "groupId": "G2", "rateLimit": 2000, "timeout": 3000, "retries": 2, "concurrency": 10}
+        {"topic": "test", "groupId": "G1", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5},
+        {"topic": "test", "groupId": "G2", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5}
       ],
 
       "http.server.port": 10086,
@@ -48,7 +48,6 @@
 * consumer模块：读取kafka中的消息，发送给下游
 
 # TODO
-* client支持流速控制
 * 引入支持版本的包管理工具glide
 * 一键编译安装脚本
 * 性能压测和BUG修复
