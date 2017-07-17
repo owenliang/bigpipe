@@ -6,7 +6,7 @@ import (
 	"strings"
 	"bigpipe/log"
 	"time"
-	"bigpipe"
+	"bigpipe/config"
 	"bigpipe/stats"
 )
 
@@ -19,7 +19,7 @@ type AsyncClient struct {
 	rateLimit *TokenBucket
 }
 
-func CreateAsyncClient(info *bigpipe.ConsumerInfo) (IClient, error) {
+func CreateAsyncClient(info *config.ConsumerInfo) (IClient, error) {
 	// 根据配置创建不同类型的客户端
 	client := AsyncClient{
 		retries: info.Retries,

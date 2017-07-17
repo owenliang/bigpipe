@@ -1,4 +1,4 @@
-package bigpipe
+package config
 
 import (
 	"io/ioutil"

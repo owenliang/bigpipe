@@ -1,7 +1,7 @@
 package client
 
 import (
-	"bigpipe"
+	"bigpipe/config"
 	"bigpipe/proto"
 )
 
@@ -10,6 +10,6 @@ type IClient interface {
 	PendingCount() int
 }
 
-func CreateClient(info *bigpipe.ConsumerInfo) (IClient, error) {
+func CreateClient(info *config.ConsumerInfo) (IClient, error) {
 	return CreateAsyncClient(info)
 }
