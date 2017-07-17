@@ -7,6 +7,7 @@ import (
 	"bigpipe/log"
 	"time"
 	"bigpipe"
+	"bigpipe/stats"
 )
 
 // 顺序阻塞调用
@@ -34,7 +35,12 @@ func CreateAsyncClient(info *bigpipe.ConsumerInfo) (IClient, error) {
 }
 
 func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
+	success := false
 	for i := 0; i < client.retries + 1; i++ {
+		// 非首次调用为重试
+		if i != 0 {
+			stats.ClientStats_rpcRetries(&message.Topic)
+		}
 		req, err := http.NewRequest("POST", message.Url, strings.NewReader(message.Data))
 		if err != nil {
 			log.WARNING("HTTP调用失败（%d）:（%v）（%v）", i, *message, err)
@@ -55,13 +61,22 @@ func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
 			log.WARNING("HTTP调用失败（%d）：(%v)，(%d)", i, *message, response.StatusCode)
 			continue
 		}
+		success = true
 		log.INFO("HTTP调用成功:（%v）", *message)
 		break
 	}
 	<- client.pending // 取出pending的字节
+
+	if success {
+		stats.ClientStats_rpcSuccess(&message.Topic)
+	} else {
+		stats.ClientStats_rpcFail(&message.Topic)
+	}
 }
 
 func (client *AsyncClient) Call(message *proto.CallMessage) {
+	stats.ClientStats_rpcTotal(&message.Topic)
+
 	// 并发控制
 	client.pending <- byte(1)
 

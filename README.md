@@ -10,7 +10,59 @@
 * [librdkafka](https://github.com/edenhill/librdkafka)
 
 # 调用示例
+异步调用
+    
     curl localhost:10086/rpc/call -d '{"acl": {"name":"system-1","secret":"i am good"},"url":"http://localhost:10086/rpc/server/mock","data":"hello123123123","partition_key": "暂时用不到"}'
+    
+    {
+        "data": "",
+        "errno": 0,
+        "msg": "发送成功"
+    }
+
+统计信息
+    
+    curl localhost:10086/stats
+    
+    {
+        "data": {
+            "clientStats": {
+                "test": {
+                    "rpcFail": 0,
+                    "rpcRetries": 0,
+                    "rpcSuccess": 22,
+                    "rpcTotal": 22
+                }
+            },
+            "consumerStats": [
+                {
+                    "groupId": "G1",
+                    "handleMessage": 11,
+                    "invalidMessage": 0,
+                    "topic": "test"
+                },
+                {
+                    "groupId": "G2",
+                    "handleMessage": 11,
+                    "invalidMessage": 0,
+                    "topic": "test"
+                }
+            ],
+            "producerStats": {
+                "test": {
+                    "deliveryFail": 0,
+                    "deliverySuccess": 11
+                }
+            },
+            "serverStats": {
+                "acceptedCall": 11,
+                "overloadCall": 0,
+                "receivedCall": 11
+            }
+        },
+        "errno": 0,
+        "msg": "success"
+    }
 
 # 配置说明
     {
@@ -46,6 +98,7 @@
 * config模块：基于json的配置
 * client模块：异步http客户端，支持超时、重试、并发控制、流速控制
 * consumer模块：读取kafka中的消息，发送给下游
+* stats模块：基于原子变量的程序统计
 
 # TODO
 * 引入支持版本的包管理工具glide

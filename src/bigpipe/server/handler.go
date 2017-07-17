@@ -9,6 +9,7 @@ import (
 	"time"
 	"bigpipe/util"
 	"bigpipe/proto"
+	"bigpipe/stats"
 )
 
 type Handler struct {
@@ -116,6 +117,8 @@ func parseRequest(body []byte) (*callRequest, string) {
 
 // 接口: /rpc/call
 func handleRpcCall(handler *Handler, w http.ResponseWriter, r *http.Request) bool {
+	stats.ServerStats_receivedCall()
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return packResponse(w,1, "内部错误", "")
@@ -134,10 +137,17 @@ func handleRpcCall(handler *Handler, w http.ResponseWriter, r *http.Request) boo
 
 	// 在新协程中发送, 避免阻塞用户请求
  	if sent := handler.producer.SendMessage(&request.acl.Topic, &request.partitionKey, message); sent {
+		stats.ServerStats_acceptedCall()
 		return packResponse(w, 0, "发送成功", "")
 	} else {
+		stats.ServerStats_overloadCall()
 		return packResponse(w, -1, "超过负载", "")
 	}
+}
+
+// 测试用的rpc响应接口
+func handleStats(handler *Handler, w http.ResponseWriter, r *http.Request) bool {
+	return packResponse(w, 0, "success", stats.StatsInfo())
 }
 
 // 测试用的rpc响应接口
@@ -155,6 +165,7 @@ func CreateHandler(producer *kafka.Producer) *Handler {
 
 	// 添加路由
 	handler.mux.HandleFunc("/rpc/call", makeHandler(&handler, handleRpcCall))
+	handler.mux.HandleFunc("/stats", makeHandler(&handler, handleStats))
 	handler.mux.HandleFunc("/rpc/server/mock", makeHandler(&handler, handleServerMock))
 
 	return &handler
