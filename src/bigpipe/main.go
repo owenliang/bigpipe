@@ -3,11 +3,11 @@ package main
 import (
 	"bigpipe/server"
 	"bigpipe/kafka"
+	"bigpipe/config"
 	"os"
 	"os/signal"
 	"syscall"
 	"runtime"
-	"bigpipe"
 	"bigpipe/log"
 	"flag"
 	"fmt"
@@ -53,7 +53,7 @@ func main() {
 	initEnv()
 
 	// 加载配置
-	if !bigpipe.LoadConfig(configFile) {
+	if !config.LoadConfig(configFile) {
 		fmt.Println("配置文件加载失败:" + configFile)
 		os.Exit(-1)
 	}
@@ -92,8 +92,11 @@ func main() {
 	srv := server.CreateServer(handler)
 
 	// 启动http服务端
-	go srv.Run()
-	log.INFO("启动HTTP服务端成功")
+	if !srv.Run() {
+		log.ERROR("启动http服务器失败")
+		os.Exit(-1)
+	}
+	log.INFO("启动http服务器成功")
 
 	log.INFO("bigpipe启动成功")
 

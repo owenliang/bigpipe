@@ -2,7 +2,7 @@ package kafka
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"bigpipe"
+	"bigpipe/config"
 	"math/rand"
 	"runtime"
 	"bigpipe/log"
@@ -38,7 +38,7 @@ func handleEvents(producer *kafka.Producer) {
 func CreateProducer() (*Producer, error) {
 	producer := Producer{}
 
-	bigConf := bigpipe.GetConfig()
+	bigConf := config.GetConfig()
 
 	// kafka服务器配置
 	conf := kafka.ConfigMap{
@@ -83,7 +83,7 @@ func getPartition(partitions int, partitionKey *string) int {
 
 // 发送一条数据到kafka
 func (producer *Producer) SendMessage(topic *string, partitionKey *string, message *proto.CallMessage) bool {
-	conf := bigpipe.GetConfig()
+	conf := config.GetConfig()
 
 	// 计算分区
 	message.Partition = getPartition(conf.Kafka_topics[*topic].Partitions, partitionKey)

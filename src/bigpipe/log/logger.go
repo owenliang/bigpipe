@@ -3,7 +3,7 @@ package log
 import (
 	"fmt"
 	"time"
-	"bigpipe"
+	"bigpipe/config"
 	"io"
 )
 
@@ -42,7 +42,7 @@ var levelStr map[int]string = map[int]string {
 }
 
 func InitLogger() {
-	bigConf := bigpipe.GetConfig()
+	bigConf := config.GetConfig()
 
 	gLogger.level = bigConf.Log_level
 	gLogger.directory = bigConf.Log_directory

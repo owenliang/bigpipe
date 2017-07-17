@@ -5,7 +5,7 @@ import (
 	"bigpipe/kafka"
 	"net/http"
 	"encoding/json"
-	"bigpipe"
+	"bigpipe/config"
 	"time"
 	"bigpipe/util"
 	"bigpipe/proto"
@@ -20,7 +20,7 @@ type callRequest struct {
 	url string
 	data string
 	partitionKey string
-	acl bigpipe.ProducerACL
+	acl config.ProducerACL
 }
 
 // 闭包提供上下文
@@ -47,7 +47,7 @@ func packResponse(w http.ResponseWriter, errno int, msg string, data interface{}
 
 // 检查ACL权限
 func aclCheck(request *callRequest) bool {
-	conf := bigpipe.GetConfig()
+	conf := config.GetConfig()
 	if aclItem, exist := conf.Kafka_producer_acl[request.acl.Name]; exist {
 		request.acl.Topic = aclItem.Topic
 		return true

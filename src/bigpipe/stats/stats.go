@@ -1,7 +1,7 @@
 package stats
 
 import (
-	"bigpipe"
+	"bigpipe/config"
 	"sync/atomic"
 )
 
@@ -50,7 +50,7 @@ type stats struct {
 var gStats stats
 
 func InitStats() {
-	bigConf := bigpipe.GetConfig()
+	bigConf := config.GetConfig()
 
 	gStats = stats{
 		producerStats: make(map[string]*ProducerStats),
@@ -72,7 +72,7 @@ func InitStats() {
 
 // 输出json格式统计信息
 func StatsInfo() (interface{}){
-	bigConf := bigpipe.GetConfig()
+	bigConf := config.GetConfig()
 
 	info := make(map[string]interface{})
 

@@ -3,10 +3,11 @@ package server
 import (
 	"net/http"
 	"time"
-	"bigpipe"
+	"bigpipe/config"
 	"strconv"
 	"bigpipe/log"
 	"context"
+	"net"
 )
 
 type Server struct {
@@ -18,7 +19,7 @@ type Server struct {
 func CreateServer(handler *Handler) *Server {
 	srv := Server{httpHandler: handler}
 
-	bigConf := bigpipe.GetConfig()
+	bigConf := config.GetConfig()
 
 	// 创建HTTP服务器
 	srv.httpServer = &http.Server{
@@ -39,8 +40,13 @@ func DestroyServer(server *Server) {
 }
 
 // 运行服务器
-func (srv *Server) Run() error {
-	return srv.httpServer.ListenAndServe()
+func (srv *Server) Run() bool {
+	listener, err := net.Listen("tcp", srv.httpServer.Addr)
+	if err != nil {
+		return false
+	}
+	go srv.httpServer.Serve(listener)
+	return true
 }
 
 

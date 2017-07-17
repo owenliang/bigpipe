@@ -2,7 +2,7 @@ package kafka
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"bigpipe"
+	"bigpipe/config"
 	"bigpipe/log"
 	"bigpipe/client"
 	"bigpipe/proto"
@@ -18,7 +18,7 @@ type Consumer struct {
 
 // 创建消费者（多个彼此独立）
 func CreateConsumer() (*Consumer, error) {
-	bigConf := bigpipe.GetConfig()
+	bigConf := config.GetConfig()
 
 	consumer := Consumer{}
 	for _, consumerInfo := range bigConf.Kafka_consumer_list {
@@ -87,7 +87,7 @@ func (consumer *Consumer) handleMessage(value []byte, idx int) {
 }
 
 // 退出前只处理普通消息
-func (consumer *Consumer) handleLeftEvent(ev kafka.Event, idx int, info *bigpipe.ConsumerInfo) {
+func (consumer *Consumer) handleLeftEvent(ev kafka.Event, idx int, info *config.ConsumerInfo) {
 	switch e := ev.(type) {
 	case *kafka.Message:
 		consumer.handleMessage(e.Value, idx)
@@ -96,7 +96,7 @@ func (consumer *Consumer) handleLeftEvent(ev kafka.Event, idx int, info *bigpipe
 }
 
 // 处理事件
-func (consumer *Consumer)handleEvent(ev kafka.Event, idx int, info *bigpipe.ConsumerInfo) {
+func (consumer *Consumer)handleEvent(ev kafka.Event, idx int, info *config.ConsumerInfo) {
 	client := consumer.clients[idx]
 
 	switch e := ev.(type) {
@@ -117,7 +117,7 @@ func (consumer *Consumer)handleEvent(ev kafka.Event, idx int, info *bigpipe.Cons
 }
 
 // 处理kafka消息
-func (consumer *Consumer)consumeLoop(idx int, info *bigpipe.ConsumerInfo) {
+func (consumer *Consumer)consumeLoop(idx int, info *config.ConsumerInfo) {
 	client := consumer.clients[idx]
 loop:
 	for true {
@@ -156,7 +156,7 @@ finalLoop:
 
 // 为每个消费者启动一个独立的协程
 func (consumer *Consumer) Run() bool {
-	bigConf := bigpipe.GetConfig()
+	bigConf := config.GetConfig()
 
 	for i, _ := range consumer.clients {
 		go consumer.consumeLoop(
