@@ -6,8 +6,15 @@
 * Go >= 1.8
 
 # 安装依赖
-* [confluentinc-kafka-go](https://github.com/confluentinc/confluent-kafka-go)
-* [librdkafka](https://github.com/edenhill/librdkafka)
+* [librdkafka（自行编译安装）](https://github.com/edenhill/librdkafka)
+
+# GO包依赖
+* [confluentinc-kafka-go（无需自行安装）](https://github.com/confluentinc/confluent-kafka-go)
+
+# 编译方法
+* 设置GOPATH为项目根目录
+* 进入GOPATH目录，安装glide包管理：mkdir -p bin && curl https://glide.sh/get | sh
+* 执行sh build.sh
 
 # 调用示例
 异步调用
@@ -101,8 +108,6 @@
 * stats模块：基于原子变量的程序统计
 
 # TODO
-* 引入支持版本的包管理工具glide
-* 一键编译安装脚本
 * 性能压测和BUG修复
 
 # 特别说明
