@@ -6,6 +6,7 @@ import (
 	"bigpipe/log"
 	"bigpipe/client"
 	"bigpipe/proto"
+	"bigpipe/stats"
 )
 
 type Consumer struct {
@@ -71,6 +72,8 @@ func DestroyConsumer(consumer *Consumer) {
 
 // 解析消息，发起http调用
 func (consumer *Consumer) handleMessage(value []byte, idx int) {
+	stats.ConsumerStats_handleMessage(idx)
+
 	// 反序列化请求
 	if msg, isValid := proto.DecodeMessage(value); isValid {
 		log.INFO("消费消息:%s", string(value))
@@ -78,6 +81,7 @@ func (consumer *Consumer) handleMessage(value []byte, idx int) {
 		cli := consumer.httpClients[idx]
 		cli.Call(msg)
 	} else {
+		stats.ConsumerStats_invalidMessage(idx)
 		log.ERROR("消息格式错误:%s", string(value))
 	}
 }

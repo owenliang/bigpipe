@@ -11,6 +11,7 @@ import (
 	"bigpipe/log"
 	"flag"
 	"fmt"
+	"bigpipe/stats"
 )
 
 func waitSignal() {
@@ -59,6 +60,9 @@ func main() {
 
 	// 启动日志
 	log.InitLogger()
+
+	// 初始化统计
+	stats.InitStats()
 
 	// 创建kafka生产者
 	producer, errp := kafka.CreateProducer()

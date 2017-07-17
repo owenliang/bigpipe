@@ -8,6 +8,7 @@ import (
 	"bigpipe/log"
 	"time"
 	"bigpipe/proto"
+	"bigpipe/stats"
 )
 
 type Producer struct {
@@ -20,8 +21,10 @@ func handleEvents(producer *kafka.Producer) {
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
+				stats.ProducerStats_deliveryFail(ev.TopicPartition.Topic)
 				log.WARNING("Delivery failed: %v\n", ev.TopicPartition.Error)
 			} else {
+				stats.ProducerStats_deliverySuccess(ev.TopicPartition.Topic)
 				log.INFO("Delivered message to topic %s [%d] at offset %v\n",
 					*ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset)
 			}
