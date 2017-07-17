@@ -41,27 +41,35 @@ func (s *asyncSink) close() {
 	s.termChan <- 1
 }
 
-func (s *asyncSink) consumeLog() {
-	isClose := false
+func (s *asyncSink) handleLog(log []byte) {
+	s.rotateFile()	// 尝试日志滚动
+	if s.file != nil {
+		s.file.Write(log)
+	}
+}
 
+func (s *asyncSink) consumeLog() {
 loop:
 	for true {
 		select {
 		case log := <- s.logChan:
-			s.rotateFile()	// 尝试日志滚动
-			if s.file != nil {
-				s.file.Write(log)
-			}
+			s.handleLog(log)
 		case <- s.termChan:
-			isClose = true
+			break loop
+		}
+	}
+
+	// 处理遗留数据
+finalLoop:
+	for true {
+		select {
+		case log := <- s.logChan:
+			s.handleLog(log)
 		default:
-			// 没有遗留数据,并且已关闭
-			if len(s.logChan) == 0 && isClose {
-				if s.file != nil {
-					s.file.Close()
-				}
-				break loop
+			if s.file != nil {
+				s.file.Close()
 			}
+			break finalLoop
 		}
 	}
 	s.waitChan <- 1 // 通知logger退出
