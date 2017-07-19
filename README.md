@@ -6,15 +6,25 @@
 * Go >= 1.8
 
 # 安装依赖
-* [librdkafka（自行编译安装）](https://github.com/edenhill/librdkafka)
+* [librdkafka（必须为0.9.5版本，编译时指定--prefix=/usr）](https://github.com/edenhill/librdkafka/releases/tag/v0.9.5)
 
 # GO包依赖
-* [confluentinc-kafka-go（无需自行安装）](https://github.com/confluentinc/confluent-kafka-go)
+* [confluentinc-kafka-go（无需自行下载，当前依赖为0.9.4版本）](https://github.com/confluentinc/confluent-kafka-go)
 
 # 编译方法
 * 设置GOPATH为项目根目录
 * 进入GOPATH目录，安装glide包管理：mkdir -p bin && curl https://glide.sh/get | sh
 * 执行sh build.sh
+
+# 潜在的安装问题
+* 编译bigpipe时候可能遇到如下报错，需要export PKG_CONFIG_PATH=/usr/lib/pkgconfig
+    
+    pkg-config --cflags rdkafka
+    Package rdkafka was not found in the pkg-config search path.
+    Perhaps you should add the directory containing `rdkafka.pc'
+    to the PKG_CONFIG_PATH environment variable
+    No package 'rdkafka' found
+* 运行bigpipe时候可能遇到找不到符号librdkafka符号的问题，那是因为编译librdkafka没有指定--prefix=/usr，可以重新编译安装或者export LD_LIBRARY_PATH=/usr/local/lib
 
 # 调用示例
 异步调用
