@@ -4,12 +4,12 @@
 
 if [ "$GOPATH" != `pwd` -a "$GOPATH" != `pwd`/ ];then
     echo "请设置GOPATH为项目根目录，并在GOPATH目录执行build.sh"
-    exit -1
+    exit 1
 fi
 
 if [ ! -f "bin/glide" ];then
     echo "请在项目根目录执行mkdir -p bin && curl https://glide.sh/get | sh"
-    exit -1
+    exit 1
 fi
 
 # 安装glide依赖
