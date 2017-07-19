@@ -18,7 +18,8 @@
 
 # 潜在的安装问题
 * 编译bigpipe时候可能遇到如下报错，需要export PKG_CONFIG_PATH=/usr/lib/pkgconfig
-    # pkg-config --cflags rdkafka
+    
+    pkg-config --cflags rdkafka
     Package rdkafka was not found in the pkg-config search path.
     Perhaps you should add the directory containing `rdkafka.pc'
     to the PKG_CONFIG_PATH environment variable
