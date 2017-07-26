@@ -24,7 +24,6 @@
 
 # 潜在的安装问题
 * 编译bigpipe时候可能遇到如下报错，需要export PKG_CONFIG_PATH=/usr/lib/pkgconfig
-    
     pkg-config --cflags rdkafka
     Package rdkafka was not found in the pkg-config search path.
     Perhaps you should add the directory containing `rdkafka.pc'
@@ -91,28 +90,51 @@
     {
       "log.level": 5,
       "log.directory": "./logs",
-
+    
       "kafka.bootstrap.servers": "localhost:9092",
       "kafka.topics": [
         {"name": "test", "partitions": 3}
       ],
-
-      "kafka.producer.channel.size" : 200000,
+    
       "kafka.producer.retries": 2,
       "kafka.producer.acl": [
         {"name": "system-1", "secret": "you are good", "topic": "test"},
         {"name": "system-2", "secret": "you are bad", "topic": "test"}
       ],
-
+    
       "kafka.consumer.list": [
         {"topic": "test", "groupId": "G1", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5},
         {"topic": "test", "groupId": "G2", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5}
       ],
-
+    
       "http.server.port": 10086,
+      "http.server.handler.channel.size": 500000,
       "http.server.read.timeout": 5000,
       "http.server.write.timeout": 5000
     }
+
+下面加粗的配置项，支持热加载。
+* **log.level**：日志级别，FATAL=1|ERROR=2|WARNING=3|INFO=4|DEBUG=5
+* **log.directory**：日志存储路径，目录必须存在
+* **kafka.bootstrap.servers**： kafka服务器列表，逗号分隔
+* **kafka.topics**：允许读写的topic列表
+* **kafka.producer.retries**：投递消息到kafka的重试次数
+* **kafka.producer.acl**：投递消息的权限账号/密码，调用者必须符合其中的某条规则
+* **kafka.producer.acl.name**：权限账号
+* **kafka.producer.acl.secret**：权限密码
+* **kafka.producer.acl.name.topic**：授权的topic名称
+* **kafka.consumer.list**：kafka消费组列表
+* **kafka.consumer.list.topic**：消费的topic
+* **kafka.consumer.list.groupId**：消费组id，相同topic下相同groupId将彼此进行rebalanced负载均衡
+* **kafka.consumer.list.rateLimit**：流速限制，即每秒的最大调用次数
+* **kafka.consumer.list.timeout**：超时时间，即每个调用最大等待应答的时间（毫秒）
+* **kafka.consumer.list.retries**：重试次数，即每个调用连续失败的最大次数
+* **kafka.consumer.list.concurrency**：并发限制，即同一时刻最多并发的请求个数
+* http.server.port：服务端监听地址，http协议
+* http.server.handler.channel.size：收到的异步调用缓冲队列大小，堆积超过队列大小将返回请求失败
+* http.server.read.timeout：服务端读取请求的超时（毫秒）
+* http.server.write.timeout：服务端发送应答的超时（毫秒）
+
 
 # 工作原理
 * server模块：接收异步Http调用
@@ -127,3 +149,6 @@
 # 运维建议
 * 关于扩展性：kafka topic预分配足够的partition，保证bigpipe可横向扩展
 * 关于可用性：bigpipe至少部署2个等价节点，利用lvs/haproxy负载均衡，或者客户端负载均衡
+
+# 参考文档
+[bigpipe设计PPT](http://yuerblog.cc/wp-content/uploads/bigpipe%E5%88%86%E4%BA%AB.pptx)
