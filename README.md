@@ -5,6 +5,12 @@
 * Kafka >= 0.9
 * Go >= 1.8
 
+# 特性
+* 横向扩展：完全支持rebalanced-consumer-group，多进程部署即可实现partition自动负载均衡
+* 配置热加载：在线服务无需重启即可加载配置，流量0损失
+* 优雅退出：处理完剩余任务后退出，流量0损失
+* 超强性能：无锁，协程并发，单进程即可充分利用多核，满足一般流量需求
+
 # 安装依赖
 * [librdkafka（必须为0.9.5版本，编译时指定--prefix=/usr）](https://github.com/edenhill/librdkafka/releases/tag/v0.9.5)
 
@@ -110,6 +116,7 @@
 
 # 工作原理
 * server模块：接收异步Http调用
+* handler模块：处理Http请求并传递给producer
 * producer模块：将异步调用序列化，投递到kafka
 * log模块：线程安全的异步日志
 * config模块：基于json的配置
@@ -117,11 +124,6 @@
 * consumer模块：读取kafka中的消息，发送给下游
 * stats模块：基于原子变量的程序统计
 
-# TODO
-* 性能压测和BUG修复
-
-# 特别说明
-* bigpipe基于rebalanced consumer group工作，可以多进程部署，自动负载均衡
-* bigpipe支持优雅退出，不损失任何数据
-* bigpipe在正常退出的情况下，保障at least once的投递语义
-* bigpipe永远不会阻塞客户端的返回
+# 运维建议
+* 关于扩展性：kafka topic预分配足够的partition，保证bigpipe可横向扩展
+* 关于可用性：bigpipe至少部署2个等价节点，利用lvs/haproxy负载均衡，或者客户端负载均衡
