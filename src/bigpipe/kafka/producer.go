@@ -67,6 +67,7 @@ func DestroyProducer(producer *Producer) {
 	for producer.client.Len() != 0 {
 		time.Sleep(1 * time.Second)	// 睡眠1秒再次检测
 	}
+	producer.client.Close()
 	log.INFO("Producer关闭成功")
 }
 
