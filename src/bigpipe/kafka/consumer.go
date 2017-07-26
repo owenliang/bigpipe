@@ -14,13 +14,14 @@ type Consumer struct {
 	httpClients []client.IClient	// HTTP客户端
 	termCh chan int 	// 退出通知
 	waitCh chan int 	// 退出等待
+	bigConf *config.Config // 配置快照
 }
 
 // 创建消费者（多个彼此独立）
-func CreateConsumer() (*Consumer, error) {
-	bigConf := config.GetConfig()
-
-	consumer := Consumer{}
+func CreateConsumer(bigConf *config.Config) (*Consumer, error) {
+	consumer := Consumer{
+		bigConf: bigConf,
+	}
 	for _, consumerInfo := range bigConf.Kafka_consumer_list {
 		// Kafka 客户端
 		cli, err := kafka.NewConsumer(&kafka.ConfigMap{
@@ -29,6 +30,7 @@ func CreateConsumer() (*Consumer, error) {
 			"heartbeat.interval.ms": 1000, // 消费者1秒心跳一次
 			"session.timeout.ms":              30000,	// 30秒没有心跳响应则退出
 			"go.events.channel.enable":        true,	// 通过管道读取数据
+			"go.events.channel.size":	100,	// 管道尺寸，避免热加载花费太长时间等待
 			"go.application.rebalance.enable": true,	// 负载均衡变化反馈给应用处理
 			"auto.offset.reset": 	"latest",	// 如果之前没有offset，那么从最新位置开始消费
 			"enable.auto.commit":	true, 	// 自动提交offset
@@ -50,7 +52,7 @@ func CreateConsumer() (*Consumer, error) {
 		if herr != nil {
 			return nil, herr
 		}
-		consumer.httpClients= append(consumer.httpClients, hCli)
+		consumer.httpClients = append(consumer.httpClients, hCli)
 	}
 
 	consumer.termCh = make(chan int, len(bigConf.Kafka_consumer_list))
@@ -91,7 +93,7 @@ func (consumer *Consumer) handleLeftEvent(ev kafka.Event, idx int, info *config.
 	switch e := ev.(type) {
 	case *kafka.Message:
 		consumer.handleMessage(e.Value, idx)
-		log.INFO("%% Message on %s:\n%s\n", e.TopicPartition, string(e.Value))
+		log.DEBUG("%% Message on %s:\n%s\n", e.TopicPartition, string(e.Value))
 	}
 }
 
@@ -101,16 +103,16 @@ func (consumer *Consumer)handleEvent(ev kafka.Event, idx int, info *config.Consu
 
 	switch e := ev.(type) {
 	case kafka.AssignedPartitions:	// 分配partition
-		log.INFO( "%% %v\n", e)
+		log.DEBUG( "%% %v\n", e)
 		client.Assign(e.Partitions)
 	case kafka.RevokedPartitions:	// 重置partition
-		log.INFO("%% %v\n", e)
+		log.DEBUG("%% %v\n", e)
 		client.Unassign()
 	case *kafka.Message:
 		consumer.handleMessage(e.Value, idx)
-		log.INFO("%% Message on %s:\n%s\n", e.TopicPartition, string(e.Value))
+		log.DEBUG("%% Message on %s:\n%s\n", e.TopicPartition, string(e.Value))
 	case kafka.PartitionEOF:
-		log.INFO("%% Reached %v\n", e)
+		log.DEBUG("%% Reached %v\n", e)
 	case kafka.Error:
 		log.FATAL("%% Error: %v\n", e)
 	}
@@ -156,12 +158,10 @@ finalLoop:
 
 // 为每个消费者启动一个独立的协程
 func (consumer *Consumer) Run() bool {
-	bigConf := config.GetConfig()
-
 	for i, _ := range consumer.clients {
 		go consumer.consumeLoop(
 			i,
-			&bigConf.Kafka_consumer_list[i],
+			&consumer.bigConf.Kafka_consumer_list[i],
 		)
 	}
 	return true

@@ -7,7 +7,6 @@
     {"name": "test", "partitions": 3}
   ],
 
-  "kafka.producer.channel.size" : 200000,
   "kafka.producer.retries": 2,
   "kafka.producer.acl": [
     {"name": "system-1", "secret": "you are good", "topic": "test"},
@@ -20,6 +19,7 @@
   ],
 
   "http.server.port": 10086,
+  "http.server.handler.channel.size": 500000,
   "http.server.read.timeout": 5000,
   "http.server.write.timeout": 5000
 }

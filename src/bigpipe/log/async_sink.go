@@ -13,6 +13,7 @@ type asyncSink struct {
 	logChan chan[]byte	// 日志队列
 	termChan chan int 	// 退出事件
 	waitChan chan int	// 通知logger可以退出
+	logger *logger
 }
 
 func (s *asyncSink) Write(p []byte) (n int, err error) {
@@ -24,7 +25,7 @@ func (s *asyncSink) rotateFile() {
 	now := time.Now()
 	hour := int(now.Unix() / 3600)
 	if hour != s.curHour {
-		filename := fmt.Sprintf("%s/bigpipe.%02d%02d%02d_%02d.log", gLogger.directory, now.Year(), now.Month(), now.Day(), now.Hour())
+		filename := fmt.Sprintf("%s/bigpipe.%02d%02d%02d_%02d.log", s.logger.directory, now.Year(), now.Month(), now.Day(), now.Hour())
 		file, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 		if err != nil {
 			return
@@ -75,8 +76,10 @@ finalLoop:
 	s.waitChan <- 1 // 通知logger退出
 }
 
-func newAsyncSink(waitChan chan int) *asyncSink {
-	sinker := asyncSink{}
+func newAsyncSink(logger *logger, waitChan chan int) *asyncSink {
+	sinker := asyncSink{
+		logger: logger,
+	}
 	sinker.termChan = make(chan int, 1)
 	sinker.logChan = make(chan []byte, 100000)
 	sinker.waitChan = waitChan

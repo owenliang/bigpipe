@@ -13,6 +13,7 @@ import (
 
 type Producer struct {
 	client *kafka.Producer
+	bigConf *config.Config
 }
 
 // 处理消息发送结果
@@ -22,27 +23,27 @@ func handleEvents(producer *kafka.Producer) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
 				stats.ProducerStats_deliveryFail(ev.TopicPartition.Topic)
-				log.WARNING("Delivery failed: %v\n", ev.TopicPartition.Error)
+				log.WARNING("投递失败: %v\n", ev.TopicPartition.Error)
 			} else {
 				stats.ProducerStats_deliverySuccess(ev.TopicPartition.Topic)
-				log.INFO("Delivered message to topic %s [%d] at offset %v\n",
+				log.INFO("投递成功 topic %s [%d] at offset %v\n",
 					*ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset)
 			}
 		default:
-			log.INFO("Ignored event: %s\n", ev)
+			log.DEBUG("Ignored event: %s\n", ev)
 		}
 	}
 }
 
 // 创建生产者
-func CreateProducer() (*Producer, error) {
-	producer := Producer{}
-
-	bigConf := config.GetConfig()
+func CreateProducer(bigConf *config.Config) (*Producer, error) {
+	producer := Producer{
+		bigConf: bigConf,
+	}
 
 	// kafka服务器配置
 	conf := kafka.ConfigMap{
-		"go.produce.channel.size" : bigConf.Kafka_producer_channel_size,
+		"go.produce.channel.size" : 100,	// 这个缓冲区不再重要, 在handler层有一层缓冲
 		"bootstrap.servers" : bigConf.Kafka_bootstrap_servers,
 		"retries": bigConf.Kafka_producer_retries,
 	}
@@ -84,10 +85,8 @@ func getPartition(partitions int, partitionKey *string) int {
 
 // 发送一条数据到kafka
 func (producer *Producer) SendMessage(topic *string, partitionKey *string, message *proto.CallMessage) bool {
-	conf := config.GetConfig()
-
 	// 计算分区
-	message.Partition = getPartition(conf.Kafka_topics[*topic].Partitions, partitionKey)
+	message.Partition = getPartition(producer.bigConf.Kafka_topics[*topic].Partitions, partitionKey)
 
 	// 序列化消息
 	value, err := proto.EncodeMessage(message)
@@ -99,10 +98,6 @@ func (producer *Producer) SendMessage(topic *string, partitionKey *string, messa
 		TopicPartition: kafka.TopicPartition{Topic: topic, Partition: int32(message.Partition)},
 		Value:          value,
 	}
-	select {
-	case producer.client.ProduceChannel() <- &msg:	// 推送消息
-		return true
-	default:	// 队列满了, 那么返回失败
-		return false
-	}
+	producer.client.ProduceChannel() <- &msg	// 推送消息
+	return true
 }
