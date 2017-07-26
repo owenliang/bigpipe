@@ -3,6 +3,7 @@ package stats
 import (
 	"bigpipe/config"
 	"sync/atomic"
+	"unsafe"
 )
 
 // 服务端统计
@@ -44,48 +45,63 @@ type stats struct {
 
 	// 客户端统计（按topic统计）
 	clientStats map[string]*ClientStats
+
+	// 配置文件快照
+	bigConf *config.Config
 }
 
 // 单例
-var gStats stats
+var gStats unsafe.Pointer = nil
 
-func InitStats() {
-	bigConf := config.GetConfig()
-
-	gStats = stats{
+func InitStats(bigConf *config.Config) {
+	stats := &stats{
 		producerStats: make(map[string]*ProducerStats),
 		consumerStats: make(map[int]*ConsumerStats),
 		clientStats: make(map[string]*ClientStats),
+		bigConf : bigConf,
 	}
 
 	// 生产者初始化
 	for _, acl := range bigConf.Kafka_producer_acl {
-		gStats.producerStats[acl.Topic] = &ProducerStats{}
+		stats.producerStats[acl.Topic] = &ProducerStats{}
 	}
 	for idx, consumerInfo := range bigConf.Kafka_consumer_list {
 		// 消费者初始化
-		gStats.consumerStats[idx] = &ConsumerStats{}
+		stats.consumerStats[idx] = &ConsumerStats{}
 		// 客户端初始化
-		gStats.clientStats[consumerInfo.Topic] = &ClientStats{}
+		stats.clientStats[consumerInfo.Topic] = &ClientStats{}
 	}
+
+	atomic.StorePointer(&gStats, unsafe.Pointer(stats))
+}
+
+func DestroyStats() {
+	atomic.StorePointer(&gStats, nil)
+}
+
+func getStats() *stats {
+	return (*stats)(atomic.LoadPointer(&gStats))
 }
 
 // 输出json格式统计信息
 func StatsInfo() (interface{}){
-	bigConf := config.GetConfig()
+	stats := getStats()
+	if stats == nil { // stats已关闭
+		return make(map[string]interface{})
+	}
 
 	info := make(map[string]interface{})
 
 	// 服务端统计
 	serverStats := make(map[string]interface{})
-	serverStats["receivedCall"] = atomic.LoadInt64(&gStats.serverStats.receivedCall)
-	serverStats["acceptedCall"] = atomic.LoadInt64(&gStats.serverStats.acceptedCall)
-	serverStats["overloadCall"] = atomic.LoadInt64(&gStats.serverStats.overloadCall)
+	serverStats["receivedCall"] = atomic.LoadInt64(&stats.serverStats.receivedCall)
+	serverStats["acceptedCall"] = atomic.LoadInt64(&stats.serverStats.acceptedCall)
+	serverStats["overloadCall"] = atomic.LoadInt64(&stats.serverStats.overloadCall)
 	info["serverStats"] = serverStats
 
 	// 生产者统计
 	producerStats := make(map[string]interface{})
-	for topic, item := range gStats.producerStats {
+	for topic, item := range stats.producerStats {
 		stats := make(map[string]interface{})
 		stats["deliverySuccess"] = atomic.LoadInt64(&item.deliverySuccess)
 		stats["deliveryFail"] = atomic.LoadInt64(&item.deliveryFail)
@@ -95,25 +111,25 @@ func StatsInfo() (interface{}){
 
 	// 消费者统计
 	consumerStats := make([]interface{}, 0)
-	for idx, item := range gStats.consumerStats {
-		stats := make(map[string]interface{})
-		stats["topic"] = bigConf.Kafka_consumer_list[idx].Topic
-		stats["groupId"] = bigConf.Kafka_consumer_list[idx].GroupId
-		stats["handleMessage"] = atomic.LoadInt64(&item.handleMessage)
-		stats["invalidMessage"] = atomic.LoadInt64(&item.invalidMessage)
-		consumerStats = append(consumerStats, stats)
+	for idx, item := range stats.consumerStats {
+		subStats := make(map[string]interface{})
+		subStats["topic"] = stats.bigConf.Kafka_consumer_list[idx].Topic
+		subStats["groupId"] = stats.bigConf.Kafka_consumer_list[idx].GroupId
+		subStats["handleMessage"] = atomic.LoadInt64(&item.handleMessage)
+		subStats["invalidMessage"] = atomic.LoadInt64(&item.invalidMessage)
+		consumerStats = append(consumerStats, subStats)
 	}
 	info["consumerStats"] = consumerStats
 
 	// 客户端统计
 	clientStats := make(map[string]interface{})
-	for topic, item := range gStats.clientStats {
-		stats := make(map[string]interface{})
-		stats["rpcTotal"] = atomic.LoadInt64(&item.rpcTotal)
-		stats["rpcSuccess"] = atomic.LoadInt64(&item.rpcSuccess)
-		stats["rpcFail"] = atomic.LoadInt64(&item.rpcFail)
-		stats["rpcRetries"] = atomic.LoadInt64(&item.rpcRetries)
-		clientStats[topic] = stats
+	for topic, item := range stats.clientStats {
+		subStats := make(map[string]interface{})
+		subStats["rpcTotal"] = atomic.LoadInt64(&item.rpcTotal)
+		subStats["rpcSuccess"] = atomic.LoadInt64(&item.rpcSuccess)
+		subStats["rpcFail"] = atomic.LoadInt64(&item.rpcFail)
+		subStats["rpcRetries"] = atomic.LoadInt64(&item.rpcRetries)
+		clientStats[topic] = subStats
 	}
 	info["clientStats"] = clientStats
 	return info
@@ -121,41 +137,63 @@ func StatsInfo() (interface{}){
 
 // 服务端统计函数
 func ServerStats_receivedCall() {
-	atomic.AddInt64(&gStats.serverStats.receivedCall, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.serverStats.receivedCall, 1)
+	}
 }
 func ServerStats_acceptedCall() {
-	atomic.AddInt64(&gStats.serverStats.acceptedCall, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.serverStats.acceptedCall, 1)
+	}
 }
 func ServerStats_overloadCall() {
-	atomic.AddInt64(&gStats.serverStats.overloadCall, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.serverStats.overloadCall, 1)
+	}
 }
 
 // 生产者统计函数
 func ProducerStats_deliverySuccess(topic *string) {
-	atomic.AddInt64(&gStats.producerStats[*topic].deliverySuccess, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.producerStats[*topic].deliverySuccess, 1)
+	}
 }
 func ProducerStats_deliveryFail(topic *string) {
-	atomic.AddInt64(&gStats.producerStats[*topic].deliveryFail, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.producerStats[*topic].deliveryFail, 1)
+	}
 }
 
 // 消费者统计函数
 func ConsumerStats_handleMessage(idx int) {
-	atomic.AddInt64(&gStats.consumerStats[idx].handleMessage, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.consumerStats[idx].handleMessage, 1)
+	}
 }
 func ConsumerStats_invalidMessage(idx int) {
-	atomic.AddInt64(&gStats.consumerStats[idx].invalidMessage, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.consumerStats[idx].invalidMessage, 1)
+	}
 }
 
 // 客户端统计
 func ClientStats_rpcTotal(topic *string) {
-	atomic.AddInt64(&gStats.clientStats[*topic].rpcTotal, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.clientStats[*topic].rpcTotal, 1)
+	}
 }
 func ClientStats_rpcSuccess(topic *string) {
-	atomic.AddInt64(&gStats.clientStats[*topic].rpcSuccess, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.clientStats[*topic].rpcSuccess, 1)
+	}
 }
 func ClientStats_rpcFail(topic *string) {
-	atomic.AddInt64(&gStats.clientStats[*topic].rpcFail, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.clientStats[*topic].rpcFail, 1)
+	}
 }
 func ClientStats_rpcRetries(topic *string) {
-	atomic.AddInt64(&gStats.clientStats[*topic].rpcRetries, 1)
+	if stats := getStats(); stats != nil {
+		atomic.AddInt64(&stats.clientStats[*topic].rpcRetries, 1)
+	}
 }

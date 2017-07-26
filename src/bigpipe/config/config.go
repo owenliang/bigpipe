@@ -35,7 +35,6 @@ type Config struct {
 	Kafka_topics map[string]TopicInfo // topic信息
 
 	// Producer配置
-	Kafka_producer_channel_size int
 	Kafka_producer_retries int
 	Kafka_producer_acl map[string]ProducerACL // acl访问权限
 
@@ -46,32 +45,34 @@ type Config struct {
 	Http_server_port int
 	Http_server_read_timeout int
 	Http_server_write_timeout int
+	Http_server_handler_channel_size int
 }
 
-var config Config
-
-func LoadConfig(path string) bool {
+// 解析并返回Config对象
+func ParseConfig(path string) *Config {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
-		return false
+		return nil
 	}
 
 	dict := map[string]interface{} {}
 
 	err = json.Unmarshal(content, &dict)
 	if err != nil {
-		return false
+		return nil
 	}
+
+	config := Config{}
 
 	config.Log_directory = dict["log.directory"].(string)
 	config.Log_level = int(dict["log.level"].(float64))
 	config.Kafka_bootstrap_servers = dict["kafka.bootstrap.servers"].(string)
-	config.Kafka_producer_channel_size = int(dict["kafka.producer.channel.size"].(float64))
 	config.Kafka_producer_retries = int(dict["kafka.producer.retries"].(float64))
 
 	config.Http_server_port = int(dict["http.server.port"].(float64))
 	config.Http_server_read_timeout = int(dict["http.server.read.timeout"].(float64))
 	config.Http_server_write_timeout = int(dict["http.server.write.timeout"].(float64))
+	config.Http_server_handler_channel_size = int(dict["http.server.handler.channel.size"].(float64))
 
 	config.Kafka_topics = map[string]TopicInfo{}
 
@@ -95,7 +96,7 @@ func LoadConfig(path string) bool {
 		// 检查acl涉及的topic是否配置
 		if _, exists := config.Kafka_topics[topic]; !exists {
 			fmt.Println("ACL中配置的topic: " + topic + " 不存在,请检查kafka.topics.")
-			return false
+			return nil
 		}
 	}
 
@@ -113,12 +114,8 @@ func LoadConfig(path string) bool {
 		// 检查acl涉及的topic是否配置
 		if _, exists := config.Kafka_topics[consumerInfo.Topic]; !exists {
 			fmt.Println("consumer中配置的topic: " + consumerInfo.Topic + " 不存在,请检查kafka.topics.")
-			return false
+			return nil
 		}
 	}
-	return true
-}
-
-func GetConfig() *Config {
 	return &config
 }

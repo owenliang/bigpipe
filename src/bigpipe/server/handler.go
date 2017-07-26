@@ -10,12 +10,33 @@ import (
 	"bigpipe/util"
 	"bigpipe/proto"
 	"bigpipe/stats"
+	"runtime"
+	"bigpipe/log"
 )
 
 type Handler struct {
 	mux *http.ServeMux
 	producer *kafka.Producer
+	bigConf *config.Config
+
+	callChan chan *callContext
+
+	termChan chan byte
+	waitChan chan byte
+
+	reloadingWChan chan byte
+	reloadingRChan chan byte
+
+	reloadDoneWChan chan byte
+	reloadDoneRChan chan byte
 }
+
+type callContext struct {
+	message *proto.CallMessage
+	topic *string
+	partitionKey *string
+}
+
 type callRequest struct {
 	url string
 	data string
@@ -46,9 +67,8 @@ func packResponse(w http.ResponseWriter, errno int, msg string, data interface{}
 }
 
 // 检查ACL权限
-func aclCheck(request *callRequest) bool {
-	conf := config.GetConfig()
-	if aclItem, exist := conf.Kafka_producer_acl[request.acl.Name]; exist {
+func (handler *Handler)aclCheck(request *callRequest) bool {
+	if aclItem, exist := handler.bigConf.Kafka_producer_acl[request.acl.Name]; exist {
 		request.acl.Topic = aclItem.Topic
 		return true
 	}
@@ -129,17 +149,25 @@ func handleRpcCall(handler *Handler, w http.ResponseWriter, r *http.Request) boo
 		return packResponse(w,-1, errmsg, "")
 	}
 	// ACL检测
-	if !aclCheck(request) {
+	if !handler.aclCheck(request) {
 		return packResponse(w, -1, "权限错误", "")
 	}
-	// 构造消息上下文
+	// 构造消息
 	message := makeCallMessage(r, request)
 
-	// 在新协程中发送, 避免阻塞用户请求
- 	if sent := handler.producer.SendMessage(&request.acl.Topic, &request.partitionKey, message); sent {
+	// 队列上下文
+	context := callContext{
+		message: message,
+		topic: &request.acl.Topic,
+		partitionKey: &request.partitionKey,
+	}
+
+	// 消息排队
+	select {
+	case handler.callChan <- &context:
 		stats.ServerStats_acceptedCall()
 		return packResponse(w, 0, "发送成功", "")
-	} else {
+	default:
 		stats.ServerStats_overloadCall()
 		return packResponse(w, -1, "超过负载", "")
 	}
@@ -155,9 +183,48 @@ func handleServerMock(handler *Handler, w http.ResponseWriter, r *http.Request) 
 	return true
 }
 
-func CreateHandler(producer *kafka.Producer) *Handler {
+func (handler *Handler)forwardCallMessage() {
+	// 正常消费
+loop:
+	for {
+		select {
+		case ctx := <-handler.callChan:
+			handler.producer.SendMessage(ctx.topic, ctx.partitionKey, ctx.message)
+		case <-handler.reloadingWChan:
+			handler.reloadingRChan <- 1
+			goto reloading
+		case <-handler.termChan:
+			goto finalLoop
+		}
+	}
+
+	// 等待重置完成
+reloading:
+	for {
+		select {
+		case <-handler.reloadDoneWChan:
+			handler.reloadDoneRChan <- 1
+			goto loop
+		}
+	}
+
+	// 退出前销毁
+finalLoop:
+	for {
+		select {
+		case ctx := <-handler.callChan:
+			handler.producer.SendMessage(ctx.topic, ctx.partitionKey, ctx.message)
+		default:
+			break finalLoop
+		}
+	}
+	handler.waitChan <- 1
+}
+
+func CreateHandler(producer *kafka.Producer, bigConf *config.Config) *Handler {
 	handler := Handler{
 		producer: producer,
+		bigConf: bigConf,
 	}
 
 	// 路由
@@ -168,7 +235,58 @@ func CreateHandler(producer *kafka.Producer) *Handler {
 	handler.mux.HandleFunc("/stats", makeHandler(&handler, handleStats))
 	handler.mux.HandleFunc("/rpc/server/mock", makeHandler(&handler, handleServerMock))
 
+	// 启动处理器
+	handler.callChan = make(chan *callContext, bigConf.Http_server_handler_channel_size)
+
+	// 关闭通知
+	handler.termChan = make(chan byte, runtime.NumCPU())
+	handler.waitChan = make(chan byte, runtime.NumCPU())
+
+	// 重载通知
+	handler.reloadingWChan = make(chan byte, runtime.NumCPU())
+	handler.reloadingRChan = make(chan byte, runtime.NumCPU())
+
+	// 重载完成通知
+	handler.reloadDoneWChan = make(chan byte, runtime.NumCPU())
+	handler.reloadDoneRChan = make(chan byte, runtime.NumCPU())
+
+	for i := 0; i < runtime.NumCPU(); i = i + 1 {
+		go handler.forwardCallMessage();
+	}
 	return &handler
+}
+
+func DestroyHandler(handler *Handler) {
+	for i := 0; i < runtime.NumCPU(); i = i + 1 {
+		handler.termChan <- 1
+	}
+	for i := 0; i < runtime.NumCPU(); i = i + 1 {
+		<-handler.waitChan
+	}
+	log.INFO("handler关闭成功")
+}
+
+func (handler *Handler)Reloading() {
+	// 通知停止工作
+	for i := 0; i < runtime.NumCPU(); i = i + 1 {
+		handler.reloadingWChan <- 1
+	}
+	// 等待工作停止
+	for i := 0; i < runtime.NumCPU(); i = i + 1 {
+		<-handler.reloadingRChan
+	}
+}
+
+func (handler *Handler)ReloadDone(producer *kafka.Producer) {
+	handler.producer = producer
+	// 通知恢复工作
+	for i := 0; i < runtime.NumCPU(); i = i + 1 {
+		handler.reloadDoneWChan <- 1
+	}
+	// 等待工作恢复
+	for i := 0; i < runtime.NumCPU(); i = i + 1 {
+		<-handler.reloadDoneRChan
+	}
 }
 
 func (handler *Handler) getMux () *http.ServeMux {

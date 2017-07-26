@@ -13,13 +13,15 @@ import (
 type Server struct {
 	httpServer *http.Server	// HTTP服务器
 	httpHandler *Handler	// 路由
+	bigConf *config.Config // 配置快照
 }
 
 // 创建服务器
-func CreateServer(handler *Handler) *Server {
-	srv := Server{httpHandler: handler}
-
-	bigConf := config.GetConfig()
+func CreateServer(handler *Handler, bigConf *config.Config) *Server {
+	srv := Server{
+		httpHandler: handler,
+		bigConf: bigConf,
+	}
 
 	// 创建HTTP服务器
 	srv.httpServer = &http.Server{

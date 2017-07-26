@@ -5,6 +5,8 @@ import (
 	"time"
 	"bigpipe/config"
 	"io"
+	"unsafe"
+	"sync/atomic"
 )
 
 // 日志管理
@@ -30,7 +32,7 @@ const (
 )
 
 // 单例
-var gLogger logger
+var gLogger unsafe.Pointer = nil
 
 // 日志级别
 var levelStr map[int]string = map[int]string {
@@ -41,21 +43,32 @@ var levelStr map[int]string = map[int]string {
 	LOG_LEVEL_DEBUG: "DEBUG",
 }
 
-func InitLogger() {
-	bigConf := config.GetConfig()
+func InitLogger(bigConf *config.Config) {
+	logger := &logger{}
 
-	gLogger.level = bigConf.Log_level
-	gLogger.directory = bigConf.Log_directory
-	gLogger.waitChan = make(chan int)
+	logger.level = bigConf.Log_level
+	logger.directory = bigConf.Log_directory
+	logger.waitChan = make(chan int)
 
 	// 输出器
-	gLogger.sinker = newAsyncSink(gLogger.waitChan)
+	logger.sinker = newAsyncSink(logger, logger.waitChan)
+
+	atomic.StorePointer(&gLogger, unsafe.Pointer(logger))
+}
+
+func getLogger() *logger {
+	return (*logger)(atomic.LoadPointer(&gLogger))
 }
 
 func DestroyLogger() {
-	if gLogger.sinker != nil {
-		gLogger.sinker.close()
-		<- gLogger.waitChan
+	// 获取当前logger
+	logger := getLogger()
+	// 释放logger,不再接收日志
+	atomic.StorePointer(&gLogger, nil)
+	// 将剩余日志消费完
+	if logger.sinker != nil {
+		logger.sinker.close()
+		<- logger.waitChan
 	}
 }
 
@@ -70,26 +83,36 @@ func (logger *logger)queueLog(level int, userLog *string) {
 }
 
 func FATAL(format string, v ...interface{}) {
-	userLog := fmt.Sprintf(format, v...)
-	gLogger.queueLog(LOG_LEVEL_FATAL, &userLog)
+	if logger := getLogger(); logger != nil {
+		userLog := fmt.Sprintf(format, v...)
+		logger.queueLog(LOG_LEVEL_FATAL, &userLog)
+	}
 }
 
 func ERROR(format string, v ...interface{}) {
-	userLog := fmt.Sprintf(format, v...)
-	gLogger.queueLog(LOG_LEVEL_ERROR, &userLog)
+	if logger := getLogger(); logger != nil {
+		userLog := fmt.Sprintf(format, v...)
+		logger.queueLog(LOG_LEVEL_ERROR, &userLog)
+	}
 }
 
 func WARNING(format string, v ...interface{}) {
-	userLog := fmt.Sprintf(format, v...)
-	gLogger.queueLog(LOG_LEVEL_WARNING, &userLog)
+	if logger := getLogger(); logger != nil {
+		userLog := fmt.Sprintf(format, v...)
+		logger.queueLog(LOG_LEVEL_WARNING, &userLog)
+	}
 }
 
 func INFO(format string, v ...interface{}) {
-	userLog := fmt.Sprintf(format, v...)
-	gLogger.queueLog(LOG_LEVEL_INFO, &userLog)
+	if logger := getLogger(); logger != nil {
+		userLog := fmt.Sprintf(format, v...)
+		logger.queueLog(LOG_LEVEL_INFO, &userLog)
+	}
 }
 
 func DEBUG(format string, v ...interface{}) {
-	userLog := fmt.Sprintf(format, v...)
-	gLogger.queueLog(LOG_LEVEL_DEBUG, &userLog)
+	if logger := getLogger(); logger != nil {
+		userLog := fmt.Sprintf(format, v...)
+		logger.queueLog(LOG_LEVEL_DEBUG, &userLog)
+	}
 }
