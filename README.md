@@ -31,6 +31,11 @@
     No package 'rdkafka' found
 * 运行bigpipe时候可能遇到找不到符号librdkafka符号的问题，那是因为编译librdkafka没有指定--prefix=/usr，可以重新编译安装或者export LD_LIBRARY_PATH=/usr/local/lib
 
+# 使用方法
+* 运行：./bigpipe -config /path/to/bigpipe.json
+* 退出：killall bigpipe
+* 热加载：killall -USR1 bigpipe
+
 # 调用示例
 异步调用
     
