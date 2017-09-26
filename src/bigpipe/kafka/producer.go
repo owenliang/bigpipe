@@ -74,7 +74,7 @@ func DestroyProducer(producer *Producer) {
 
 func getPartition(partitions int, partitionKey *string) int {
 	if len(*partitionKey) == 0 {
-		return int(rand.Int31() / int32(partitions))
+		return int(rand.Int31n(int32(partitions)))
 	}
 	var hash uint64 = 0
 	for _, c := range *partitionKey {
