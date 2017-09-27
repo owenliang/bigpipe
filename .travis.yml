@@ -10,7 +10,7 @@ before_install:
   - export PATH=$PATH:$HOME/gopath/src/github.com/owenliang/bigpipe/bin/
   - go get -v github.com/Masterminds/glide
   - cd src/github.com/Masterminds/glide && go install && cd -
-  - mkdir bin && cp `which glide` bin
+  - mkdir -p ./bin && cp `which glide` ./bin
 
 script:
   - sh build.sh
