@@ -8,7 +8,9 @@ sudo: false
 before_install:
   - export GOPATH=$HOME/gopath/src/github.com/owenliang/bigpipe
   - export PATH=$PATH:$HOME/gopath/src/github.com/owenliang/bigpipe/bin/
-  - mkdir -p bin && curl https://glide.sh/get | sh
+  - go get -v github.com/Masterminds/glide
+  - cd src/github.com/Masterminds/glide && go install && cd -
+  - mkdir bin && cp `which glide` bin
 
 script:
   - sh build.sh
