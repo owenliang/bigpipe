@@ -5,7 +5,7 @@ go:
 
 sudo: required
 
-before_install:
+install:
   - export GOPATH=$HOME/gopath/src/github.com/owenliang/bigpipe
   - export PATH=$PATH:$HOME/gopath/src/github.com/owenliang/bigpipe/bin/
   - go get -v github.com/Masterminds/glide
@@ -13,8 +13,5 @@ before_install:
   - wget https://github.com/edenhill/librdkafka/archive/v0.9.5.tar.gz && tar -zxvf v0.9.5.tar.gz && cd librdkafka-0.9.5 && ./configure && make && sudo make install && cd -
   - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-install:
-  - sh build.sh
-
 script:
-  - echo "pass"
+  - sh build.sh
