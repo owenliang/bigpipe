@@ -1,6 +1,6 @@
 # bigpipe
 
-[![Build Status](https://travis-ci.org/owenliang/bigpipe.svg?branch=master)](https://travis-ci.org/owenliang/bigpipe)
+[![Build Status](https://travis-ci.org/owenliang/bigpipe.svg?branch=dev)](https://travis-ci.org/owenliang/bigpipe)
 
 一个基于Kafka的中间件，旨在简化服务间异步Http调用的复杂度
 
