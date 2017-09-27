@@ -1,0 +1,10 @@
+language: go
+
+go:
+  - 1.9
+
+sudo: false
+
+script:
+  - mkdir -p bin && curl https://glide.sh/get | sh
+  - sh build.sh
