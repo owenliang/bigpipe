@@ -10,8 +10,10 @@ before_install:
   - export PATH=$PATH:$HOME/gopath/src/github.com/owenliang/bigpipe/bin/
   - go get -v github.com/Masterminds/glide
   - cd src/github.com/Masterminds/glide && go install && cd -
-  - wget https://github.com/edenhill/librdkafka/archive/v0.9.5.tar.gz && tar -zxvf v0.9.5.tar.gz && cd librdkafka-0.9.5 && ./configure && sudo make install && cd -
-  - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig 
+  - wget https://github.com/edenhill/librdkafka/archive/v0.9.5.tar.gz && tar -zxvf v0.9.5.tar.gz && cd librdkafka-0.9.5 && ./configure
+  - sudo make install
+  - cd - 
+  - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
 script:
   - sh build.sh
