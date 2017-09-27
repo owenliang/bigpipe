@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # 这是编译脚本, 自动更新glide依赖，编译程序并输出到GOPATH/output目录
 
 if [ "$GOPATH" != `pwd` -a "$GOPATH" != `pwd`/ ];then
