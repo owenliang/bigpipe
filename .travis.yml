@@ -5,6 +5,9 @@ go:
 
 sudo: false
 
-script:
+before_install:
+  - export GOPATH=$HOME/gopath/src/github.com/owenliang/bigpipe
   - mkdir -p bin && curl https://glide.sh/get | sh
+
+script:
   - sh build.sh
