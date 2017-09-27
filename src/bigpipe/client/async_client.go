@@ -8,6 +8,7 @@ import (
 	"time"
 	"bigpipe/config"
 	"bigpipe/stats"
+	"strconv"
 )
 
 // 顺序阻塞调用
@@ -47,6 +48,8 @@ func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
 			continue
 		}
 		req.Header = message.Headers
+		req.Header["Content-Length"] = []string{strconv.Itoa(len(message.Data))}
+		req.Header["Content-Type"] = []string{"application/octet-stream"}
 		response, rErr := client.httpClient.Do(req)
 		if rErr != nil {
 			log.WARNING("HTTP调用失败（%d）：（%v）（%v）", i, *message, err)
