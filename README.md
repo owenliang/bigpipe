@@ -47,6 +47,10 @@
         "msg": "发送成功"
     }
 
+接收端(PHP为例)
+
+    $data = file_get_contents("php://input"); // $data的值为hello123123123
+
 统计信息
     
     curl localhost:10086/stats
