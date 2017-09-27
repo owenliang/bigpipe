@@ -3,7 +3,7 @@ language: go
 go:
   - 1.9
 
-sudo: false
+sudo: required
 
 before_install:
   - export GOPATH=$HOME/gopath/src/github.com/owenliang/bigpipe
