@@ -50,9 +50,13 @@ func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
 		req.Header = message.Headers
 		req.Header["Content-Length"] = []string{strconv.Itoa(len(message.Data))}
 		req.Header["Content-Type"] = []string{"application/octet-stream"}
+
+		reqStartTime := time.Now().UnixNano()
 		response, rErr := client.httpClient.Do(req)
+		reqUsedTime := int64((time.Now().UnixNano() - reqStartTime) / 1000000)
+
 		if rErr != nil {
-			log.WARNING("HTTP调用失败（%d）：（%v）（%v）", i, *message, err)
+			log.WARNING("HTTP调用失败（%d）（%dms）：（%v）（%v）", i, reqUsedTime, *message, err)
 			continue
 		}
 
@@ -61,11 +65,11 @@ func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
 
 		// 判断返回码是200即可
 		if response.StatusCode != 200 {
-			log.WARNING("HTTP调用失败（%d）：(%v)，(%d)", i, *message, response.StatusCode)
+			log.WARNING("HTTP调用失败（%d）（%dms）：(%v)，(%d)", i, reqUsedTime, *message, response.StatusCode)
 			continue
 		}
 		success = true
-		log.INFO("HTTP调用成功:（%v）", *message)
+		log.INFO("HTTP调用成功（%d）（%dms）:（%v）", i, reqUsedTime, *message)
 		break
 	}
 	<- client.pending // 取出pending的字节
