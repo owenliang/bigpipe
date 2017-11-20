@@ -12,11 +12,15 @@ import (
 	"bigpipe/stats"
 	"runtime"
 	"bigpipe/log"
+	"sync"
 )
 
 type Handler struct {
 	mux *http.ServeMux
 	producer *kafka.Producer
+
+	// 增加读写锁用于热加载
+	rwMutex sync.RWMutex
 	bigConf *config.Config
 
 	callChan chan *callContext
@@ -68,7 +72,11 @@ func packResponse(w http.ResponseWriter, errno int, msg string, data interface{}
 
 // 检查ACL权限
 func (handler *Handler)aclCheck(request *callRequest) bool {
-	if aclItem, exist := handler.bigConf.Kafka_producer_acl[request.acl.Name]; exist {
+	handler.rwMutex.RLock()
+	bigConf := handler.bigConf
+	handler.rwMutex.RUnlock()
+
+	if aclItem, exist := bigConf.Kafka_producer_acl[request.acl.Name]; exist {
 		request.acl.Topic = aclItem.Topic
 		return true
 	}
@@ -266,7 +274,11 @@ func DestroyHandler(handler *Handler) {
 	log.INFO("handler关闭成功")
 }
 
-func (handler *Handler)Reloading() {
+func (handler *Handler)Reloading(bigConf *config.Config) {
+	// 更新bigConf配置
+	handler.rwMutex.Lock()
+	handler.bigConf = bigConf
+	handler.rwMutex.Unlock()
 	// 通知停止工作
 	for i := 0; i < runtime.NumCPU(); i = i + 1 {
 		handler.reloadingWChan <- 1
