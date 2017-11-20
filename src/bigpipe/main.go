@@ -26,7 +26,7 @@ func reload() {
 
 	// 暂停handler向producer转发流量
 	log.INFO("[热重启]暂停handler")
-	gHandler.Reloading()
+	gHandler.Reloading(bigConf)
 
 	// 释放生产者
 	log.INFO("[热重启]关闭kafka生产者")
