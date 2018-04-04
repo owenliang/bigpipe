@@ -1,6 +1,8 @@
 # bigpipe
 一个基于Kafka的中间件，旨在简化服务间异步Http调用的复杂度
 
+[![Build Status](https://travis-ci.org/owenliang/bigpipe.svg?branch=master)](https://travis-ci.org/owenliang/bigpipe)
+
 # 功能更新
 
 * 2018-04-04：增加了consumer粒度的熔断器，防止下游不可用导致大量流量持续损失，这是一个可选功能
