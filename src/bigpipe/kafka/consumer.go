@@ -55,16 +55,15 @@ func CreateConsumer(bigConf *config.Config) (*Consumer, error) {
 		consumer.httpClients = append(consumer.httpClients, hCli)
 	}
 
-	consumer.termCh = make(chan int, len(bigConf.Kafka_consumer_list))
+	consumer.termCh = make(chan int, 1)
 	consumer.waitCh = make(chan int, len(bigConf.Kafka_consumer_list))
 	return &consumer, nil
 }
 
 func DestroyConsumer(consumer *Consumer) {
 	// 通知各个consumer goroutine退出
-	for i := 0; i < len(consumer.clients); i = i + 1 {
-		consumer.termCh <- 1
-	}
+	close(consumer.termCh)
+
 	// 等待各个consumer goroutine退出
 	for i := 0; i < len(consumer.clients); i = i + 1 {
 		<- consumer.waitCh
@@ -81,7 +80,7 @@ func (consumer *Consumer) handleMessage(value []byte, idx int) {
 		log.INFO("消费消息:%s", string(value))
 		// 发起HTTP调用
 		cli := consumer.httpClients[idx]
-		cli.Call(msg)
+		cli.Call(msg, consumer.termCh)
 	} else {
 		stats.ConsumerStats_invalidMessage(idx)
 		log.ERROR("消息格式错误:%s", string(value))

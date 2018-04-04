@@ -6,7 +6,7 @@ import (
 )
 
 type IClient interface {
-	Call(message *proto.CallMessage)
+	Call(message *proto.CallMessage, termChan chan int)
 	PendingCount() int
 }
 

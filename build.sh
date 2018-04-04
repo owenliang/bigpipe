@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 # 这是编译脚本, 自动更新glide依赖，编译程序并输出到GOPATH/output目录
 
 if [ "$GOPATH" != `pwd` -a "$GOPATH" != `pwd`/ ];then
@@ -19,11 +17,14 @@ cd src/bigpipe && ../../bin/glide install && cd -
 
 # 编译程序
 cd src/bigpipe && go build && cd -
+cd tools && go build && cd -
 
 # 输出到output目录
 rm -rf output
 mkdir output
 
 cp src/bigpipe/bigpipe output/
+cp tools/tools output/monitor
+cp -r tools/kafka_2.10-0.9.0.1 output/
 cp -r conf output/
 mkdir -p output/logs

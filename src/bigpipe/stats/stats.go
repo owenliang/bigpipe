@@ -31,6 +31,7 @@ type ClientStats struct {
 	rpcSuccess int64 // 调用成功次数
 	rpcFail int64 // 调用失败次数
 	rpcRetries int64 // 调用重试次数（>=rpcFail）
+	circuitIsBreak int32 // 熔断开关（1：熔断，0：未熔断）
 }
 
 type stats struct {
@@ -129,6 +130,7 @@ func StatsInfo() (interface{}){
 		subStats["rpcSuccess"] = atomic.LoadInt64(&item.rpcSuccess)
 		subStats["rpcFail"] = atomic.LoadInt64(&item.rpcFail)
 		subStats["rpcRetries"] = atomic.LoadInt64(&item.rpcRetries)
+		subStats["circuitIsBreak"] = atomic.LoadInt32(&item.circuitIsBreak)
 		clientStats[topic] = subStats
 	}
 	info["clientStats"] = clientStats
@@ -195,5 +197,14 @@ func ClientStats_rpcFail(topic *string) {
 func ClientStats_rpcRetries(topic *string) {
 	if stats := getStats(); stats != nil {
 		atomic.AddInt64(&stats.clientStats[*topic].rpcRetries, 1)
+	}
+}
+func ClientStats_setCircuitIsBreak(topic *string, isBreak bool) {
+	if stats := getStats(); stats != nil {
+		if isBreak {
+			atomic.StoreInt32(&stats.clientStats[*topic].circuitIsBreak, 1)
+		} else {
+			atomic.StoreInt32(&stats.clientStats[*topic].circuitIsBreak, 0)
+		}
 	}
 }

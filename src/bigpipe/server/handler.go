@@ -279,6 +279,7 @@ func (handler *Handler)Reloading(bigConf *config.Config) {
 	handler.rwMutex.Lock()
 	handler.bigConf = bigConf
 	handler.rwMutex.Unlock()
+
 	// 通知停止工作
 	for i := 0; i < runtime.NumCPU(); i = i + 1 {
 		handler.reloadingWChan <- 1

@@ -16,6 +16,14 @@ type ProducerACL struct {
 	Name string
 }
 
+type CircuitBreakerInfo struct {
+	 BreakPeriod int // 熔断封锁时间
+	 RecoverPeriod int // 熔断恢复时间
+	 WinSize int // 滑动窗口大小
+	 MinStats int // 最小统计样本
+	 HealthRate float64 // 健康阀值
+}
+
 type ConsumerInfo struct {
 	Topic string
 	GroupId string
@@ -23,6 +31,7 @@ type ConsumerInfo struct {
 	Retries int
 	Timeout int
 	Concurrency int
+	CircuiteBreakerInfo *CircuitBreakerInfo
 }
 
 type Config struct {
@@ -110,6 +119,21 @@ func ParseConfig(path string) *Config {
 		consumerInfo.Retries = int(item["retries"].(float64))
 		consumerInfo.Timeout = int(item["timeout"].(float64))
 		consumerInfo.Concurrency = int(item["concurrency"].(float64))
+		// 加载熔断器配置（可选）
+		if circuitValue, exist := item["circuitBreaker"]; exist {
+			circuitMap := circuitValue.(map[string]interface{})
+			consumerInfo.CircuiteBreakerInfo = &CircuitBreakerInfo{}
+			consumerInfo.CircuiteBreakerInfo.RecoverPeriod = int(circuitMap["recoverPeriod"].(float64))
+			consumerInfo.CircuiteBreakerInfo.BreakPeriod = int(circuitMap["breakPeriod"].(float64))
+			consumerInfo.CircuiteBreakerInfo.WinSize = int(circuitMap["winSize"].(float64))
+			consumerInfo.CircuiteBreakerInfo.HealthRate = circuitMap["healthRate"].(float64)
+			consumerInfo.CircuiteBreakerInfo.MinStats = int(circuitMap["minStats"].(float64))
+			if consumerInfo.CircuiteBreakerInfo.WinSize <= 0 || consumerInfo.CircuiteBreakerInfo.MinStats <=0 || consumerInfo.CircuiteBreakerInfo.HealthRate <= 0 || consumerInfo.CircuiteBreakerInfo.HealthRate > 100 {
+				fmt.Println("consumer配置的熔断器参数有误, 请检查一下.")
+				return nil
+			}
+		}
+
 		config.Kafka_consumer_list = append(config.Kafka_consumer_list, consumerInfo)
 		// 检查acl涉及的topic是否配置
 		if _, exists := config.Kafka_topics[consumerInfo.Topic]; !exists {

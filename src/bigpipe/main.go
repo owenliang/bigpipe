@@ -145,7 +145,7 @@ func main() {
 	// 创建kafka生产者
 	gProducer, err = kafka.CreateProducer(bigConf)
 	if err != nil {
-		log.ERROR("创建kafka producer失败")
+		fmt.Println("创建kafka producer失败:%v", err)
 		os.Exit(-1)
 	}
 	log.INFO("启动kafka producer成功")
@@ -153,12 +153,12 @@ func main() {
 	// 创建kafka消费者
 	gConsumer, err = kafka.CreateConsumer(bigConf)
 	if err != nil {
-		log.ERROR("创建kafka consumer失败")
+		fmt.Println("创建kafka consumer失败:%v", err)
 		os.Exit(-1)
 	}
 	// 启动kafka消费者
 	if !gConsumer.Run() {
-		log.ERROR("启动kafka生产者失败")
+		fmt.Println("启动kafka生产者失败")
 		os.Exit(-1);
 	}
 	log.INFO("启动kafka consumer成功")
@@ -171,7 +171,7 @@ func main() {
 
 	// 启动http服务端
 	if !gSrv.Run() {
-		log.ERROR("启动http服务器失败")
+		fmt.Println("启动http服务器失败")
 		os.Exit(-1)
 	}
 	log.INFO("启动http服务器成功")

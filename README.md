@@ -1,8 +1,9 @@
 # bigpipe
-
-[![Build Status](https://travis-ci.org/owenliang/bigpipe.svg?branch=master)](https://travis-ci.org/owenliang/bigpipe)
-
 一个基于Kafka的中间件，旨在简化服务间异步Http调用的复杂度
+
+# 功能更新
+
+* 2018-04-04 liangdong：增加了consumer粒度的熔断器，防止下游不可用导致大量流量持续损失，这是一个可选功能
 
 # 环境要求
 * Kafka >= 0.9
@@ -115,7 +116,7 @@
       ],
     
       "kafka.consumer.list": [
-        {"topic": "test", "groupId": "G1", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5},
+        {"topic": "test", "groupId": "G1", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5, "circuitBreaker": {"breakPeriod": 10, "recoverPeriod": 30, "winSize": 60, "minStats": 100, "healthRate": 0.85}},
         {"topic": "test", "groupId": "G2", "rateLimit": 100, "timeout": 3000, "retries": 2, "concurrency": 5}
       ],
     
@@ -142,6 +143,13 @@
 * **kafka.consumer.list.timeout**：超时时间，即每个调用最大等待应答的时间（毫秒）
 * **kafka.consumer.list.retries**：重试次数，即每个调用连续失败的最大次数
 * **kafka.consumer.list.concurrency**：并发限制，即同一时刻最多并发的请求个数
+* **kafka.consumer.list.circuitBreaker**: 熔断器，可选
+* **kafka.consumer.list.circuitBreaker.breakPeriod**: 熔断冻结时间（此期间不透过任何请求），单位秒
+* **kafka.consumer.list.circuitBreaker.recoverPeriod**: 熔断慢恢复时间（此期间逐渐增大放量请求），单位秒
+* **kafka.consumer.list.circuitBreaker.winSize**: 统计滑动窗口（检查这段窗口时间内的成功率），单位秒
+* **kafka.consumer.list.circuitBreaker.minStats**: 滑动窗口内样本少于此数值则直接认为服务健康
+* **kafka.consumer.list.circuitBreaker.healthRate**: 统计的健康阀值，区间[0,1]，成功率低于此值认为服务不健康
+
 * http.server.port：服务端监听地址，http协议
 * http.server.handler.channel.size：收到的异步调用缓冲队列大小，堆积超过队列大小将返回请求失败
 * http.server.read.timeout：服务端读取请求的超时（毫秒）
@@ -163,4 +171,4 @@
 * 关于可用性：bigpipe至少部署2个等价节点，利用lvs/haproxy负载均衡，或者客户端负载均衡
 
 # 参考文档
-[bigpipe设计PPT](http://yuerblog.cc/wp-content/uploads/bigpipe%E5%88%86%E4%BA%AB.pptx)
+[bigpipe设计PPT](https://gitlab-team.smzdm.com/smzdm/bigpipe/raw/master/doc/bigpipe%E5%88%86%E4%BA%AB.pptx)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"unsafe"
 	"sync/atomic"
+	"os"
 )
 
 // 日志管理
@@ -49,6 +50,11 @@ func InitLogger(bigConf *config.Config) {
 	logger.level = bigConf.Log_level
 	logger.directory = bigConf.Log_directory
 	logger.waitChan = make(chan int)
+
+	// 创建目录
+	if err := os.MkdirAll(bigConf.Log_directory, 0777); err !=nil {
+		fmt.Println("无法建立日志目录:" + bigConf.Log_directory)
+	}
 
 	// 输出器
 	logger.sinker = newAsyncSink(logger, logger.waitChan)

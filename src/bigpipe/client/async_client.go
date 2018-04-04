@@ -17,7 +17,8 @@ type AsyncClient struct {
 	retries int	// 重试次数
 	timeout int // 请求超时时间
 	pending chan byte	// 正在并发中的http请求个数
-	rateLimit *TokenBucket
+	rateLimit *TokenBucket // 令牌桶限速
+	circuitBreaker *CircuitBreaker // 熔断器
 }
 
 func CreateAsyncClient(info *config.ConsumerInfo) (IClient, error) {
@@ -26,6 +27,10 @@ func CreateAsyncClient(info *config.ConsumerInfo) (IClient, error) {
 		retries: info.Retries,
 		timeout: info.Timeout,
 	}
+	// 熔断器
+	if info.CircuiteBreakerInfo != nil {
+		client.circuitBreaker = CreateCircuitBreaker(info.CircuiteBreakerInfo)
+	}
 	// 并发控制管道
 	client.pending = make(chan byte, info.Concurrency)
 	// 流速控制器
@@ -33,6 +38,16 @@ func CreateAsyncClient(info *config.ConsumerInfo) (IClient, error) {
 	// 客户端超时时间
 	client.httpClient.Timeout = time.Duration(client.timeout) * time.Millisecond
 	return &client, nil
+}
+
+func (client *AsyncClient) notifyCircuitBreaker(success bool) {
+	if client.circuitBreaker != nil {
+		if success {
+			client.circuitBreaker.Success()
+		} else {
+			client.circuitBreaker.Fail()
+		}
+	}
 }
 
 func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
@@ -56,6 +71,7 @@ func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
 		reqUsedTime := int64((time.Now().UnixNano() - reqStartTime) / 1000000)
 
 		if rErr != nil {
+			client.notifyCircuitBreaker(false)
 			log.WARNING("HTTP调用失败（%d）（%dms）：（%v）（%v）", i, reqUsedTime, *message, err)
 			continue
 		}
@@ -65,10 +81,12 @@ func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
 
 		// 判断返回码是200即可
 		if response.StatusCode != 200 {
+			client.notifyCircuitBreaker(false)
 			log.WARNING("HTTP调用失败（%d）（%dms）：(%v)，(%d)", i, reqUsedTime, *message, response.StatusCode)
 			continue
 		}
 		success = true
+		client.notifyCircuitBreaker(true)
 		log.INFO("HTTP调用成功（%d）（%dms）:（%v）", i, reqUsedTime, *message)
 		break
 	}
@@ -81,8 +99,30 @@ func (client *AsyncClient) callWithRetry(message *proto.CallMessage) {
 	}
 }
 
-func (client *AsyncClient) Call(message *proto.CallMessage) {
+func (client *AsyncClient) Call(message *proto.CallMessage, termChan chan int) {
 	stats.ClientStats_rpcTotal(&message.Topic)
+
+	// 熔断控制
+	if client.circuitBreaker != nil {
+	CIRCUIT_LOOP:
+		for {
+			isBreak, isHealthy, healthRate := client.circuitBreaker.IsBreak()
+			if isBreak { // 熔断则等待1秒再检查
+				select {
+					case <- termChan: // 来自调用方的关闭信号, 为了避免熔断影响退出时间, 一旦调用方关闭则暂停熔断控制, 快速消化剩余流量
+						log.DEBUG("Client调用方通知关闭, 熔断逻辑失效.")
+						break CIRCUIT_LOOP
+					case <- time.After(1 * time.Second):	// 正常情况下间隔1秒确认熔断状态
+						stats.ClientStats_setCircuitIsBreak(&message.Topic, true)	// 熔断开关打点统计
+						log.WARNING("熔断[触发] Topic=%s isHealthy=%v healthRate=%v", message.Topic, isHealthy, healthRate)
+						continue
+				}
+			} else {
+				break
+			}
+		}
+	}
+	stats.ClientStats_setCircuitIsBreak(&message.Topic, false) // 熔断开关打点统计
 
 	// 并发控制
 	client.pending <- byte(1)
