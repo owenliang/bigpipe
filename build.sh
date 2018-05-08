@@ -17,14 +17,11 @@ cd src/bigpipe && ../../bin/glide install && cd -
 
 # 编译程序
 cd src/bigpipe && go build && cd -
-cd tools && go build && cd -
 
 # 输出到output目录
 rm -rf output
 mkdir output
 
 cp src/bigpipe/bigpipe output/
-cp tools/tools output/monitor
-cp -r tools/kafka_2.10-0.9.0.1 output/
 cp -r conf output/
 mkdir -p output/logs
